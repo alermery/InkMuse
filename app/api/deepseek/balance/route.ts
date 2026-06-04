@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 type DeepSeekBalanceInfo = {
   currency?: string;
@@ -46,13 +46,12 @@ export async function GET(request: Request) {
     });
 
     const text = await response.text();
-    const payload = text ? (JSON.parse(text) as DeepSeekBalanceResponse & { error?: { message?: string } }) : null;
+    const payload = text
+      ? (JSON.parse(text) as DeepSeekBalanceResponse & { error?: { message?: string } })
+      : null;
 
     if (!response.ok) {
-      const message =
-        payload?.error?.message ??
-        `DeepSeek 余额查询失败（${response.status}）`;
-
+      const message = payload?.error?.message ?? `DeepSeek 余额查询失败：${response.status}`;
       return NextResponse.json({ error: message }, { status: response.status });
     }
 

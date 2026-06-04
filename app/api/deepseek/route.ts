@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { deepseekClient } from "@/lib/deepseek";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 
 type ChatMessage = {
   role: "system" | "user" | "assistant";
@@ -73,6 +72,10 @@ function streamText(content: string, status = 200) {
   );
 }
 
+function resolveApiKey(request: Request) {
+  return request.headers.get("x-deepseek-api-key") ?? process.env.DEEPSEEK_API_KEY;
+}
+
 export async function POST(request: Request) {
   const retryAfter = checkRateLimit(getClientKey(request));
 
@@ -86,7 +89,6 @@ export async function POST(request: Request) {
       model?: string;
       temperature?: number;
       maxTokens?: number;
-      stream?: boolean;
     };
 
     const messages = body.messages ?? [];
@@ -95,40 +97,103 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "messages 不能为空。" }, { status: 400 });
     }
 
-    const headerApiKey = request.headers.get("x-deepseek-api-key") ?? undefined;
-    const client = deepseekClient(headerApiKey);
+    const apiKey = resolveApiKey(request);
 
-    if (!client) {
-      return streamText(
-        "未检测到 DEEPSEEK_API_KEY。请在环境变量或 API Key 设置中配置后再生成。",
-        401,
-      );
+    if (!apiKey) {
+      return streamText("未检测到 DeepSeek API Key，请先在环境变量或 API Key 设置中配置。", 401);
     }
 
-    const completion = await client.chat.completions.create({
-      model: normalizeModel(body.model),
-      messages,
-      temperature: body.temperature ?? 0.85,
-      max_tokens: body.maxTokens ?? 2000,
-      stream: true,
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({
+        model: normalizeModel(body.model),
+        messages,
+        temperature: body.temperature ?? 0.85,
+        max_tokens: body.maxTokens ?? 2000,
+        stream: true,
+      }),
     });
 
+    if (!response.ok || !response.body) {
+      const text = await response.text();
+      return streamText(text || `DeepSeek 请求失败：${response.status}`, response.status);
+    }
+
     const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
 
     return new Response(
       new ReadableStream({
         async start(controller) {
+          const reader = response.body?.getReader();
+
+          if (!reader) {
+            controller.enqueue(encoder.encode(sse({ error: "DeepSeek 未返回流式响应。" })));
+            controller.enqueue(encoder.encode(sse("[DONE]")));
+            controller.close();
+            return;
+          }
+
+          let buffer = "";
+
           try {
-            for await (const chunk of completion) {
-              const token = chunk.choices[0]?.delta?.content ?? "";
-              if (token) {
-                controller.enqueue(encoder.encode(sse({ content: token })));
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) {
+                break;
+              }
+
+              buffer += decoder.decode(value, { stream: true });
+              const events = buffer.split("\n\n");
+              buffer = events.pop() ?? "";
+
+              for (const event of events) {
+                const line = event.split("\n").find((item) => item.startsWith("data:"));
+
+                if (!line) {
+                  continue;
+                }
+
+                const data = line.slice(5).trim();
+                if (data === "[DONE]") {
+                  controller.enqueue(encoder.encode(sse("[DONE]")));
+                  controller.close();
+                  return;
+                }
+
+                const parsed = JSON.parse(data) as {
+                  choices?: { delta?: { content?: string } }[];
+                  error?: { message?: string };
+                };
+                const token = parsed.choices?.[0]?.delta?.content ?? "";
+                const message = parsed.error?.message;
+
+                if (message) {
+                  controller.enqueue(encoder.encode(sse({ error: message })));
+                }
+                if (token) {
+                  controller.enqueue(encoder.encode(sse({ content: token })));
+                }
               }
             }
+
             controller.enqueue(encoder.encode(sse("[DONE]")));
             controller.close();
           } catch (error) {
-            controller.error(error);
+            controller.enqueue(
+              encoder.encode(
+                sse({
+                  error: error instanceof Error ? error.message : "DeepSeek 流式响应解析失败。",
+                }),
+              ),
+            );
+            controller.enqueue(encoder.encode(sse("[DONE]")));
+            controller.close();
           }
         },
       }),
@@ -142,9 +207,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     return streamText(
-      error instanceof Error
-        ? `DeepSeek 请求失败：${error.message}`
-        : "DeepSeek 请求失败，请检查配置。",
+      error instanceof Error ? `DeepSeek 请求失败：${error.message}` : "DeepSeek 请求失败，请检查配置。",
       500,
     );
   }
