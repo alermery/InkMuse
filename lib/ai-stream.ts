@@ -1,12 +1,13 @@
 "use client";
 
 import type { EncyclopediaEntry, SavedEntry } from "@/types";
+import type { DeepSeekModel } from "@/types";
 
 type StreamRequest = {
   system: string;
   user: string;
   apiKey?: string;
-  model?: "deepseek-chat" | "deepseek-v4-flash" | "deepseek-v4-pro";
+  model?: DeepSeekModel;
   temperature?: number;
   maxTokens?: number;
   timeoutMs?: number;

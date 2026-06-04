@@ -118,7 +118,6 @@ DEEPSEEK_API_KEY=sk-xxxx
 
 当前界面内置以下模型选项：
 
-- `deepseek-chat`
 - `deepseek-v4-flash`
 - `deepseek-v4-pro`
 

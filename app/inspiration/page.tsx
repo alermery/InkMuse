@@ -17,6 +17,7 @@ import { ModuleFormShell } from "@/components/features/module-form-shell";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { parseJsonArray, savedEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
 import { useNovelStore } from "@/lib/store";
+import { usePersistedState } from "@/lib/use-persisted-state";
 
 type GeneratedIdea = {
   title: string;
@@ -39,21 +40,29 @@ export default function InspirationPage() {
   const apiKey = useNovelStore((state) => state.apiKey);
   const model = useNovelStore((state) => state.model);
   const saveEntry = useNovelStore((state) => state.saveEntry);
+  const savedEntries = useNovelStore((state) => state.savedEntries);
+  const removeSavedEntry = useNovelStore((state) => state.removeSavedEntry);
   const addToast = useNovelStore((state) => state.addToast);
   const addTokenUsage = useNovelStore((state) => state.addTokenUsage);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
-  const [selectedGenres, setSelectedGenres] = useState(["悬疑"]);
-  const [selectedDirection, setSelectedDirection] = useState(["人物冲突"]);
-  const [selectedTone, setSelectedTone] = useState(["暗黑"]);
-  const [count, setCount] = useState(3);
-  const [raw, setRaw] = useState("");
-  const [ideas, setIdeas] = useState<GeneratedIdea[]>([]);
-  const [expanded, setExpanded] = useState("");
+  const [selectedGenres, setSelectedGenres] = usePersistedState("inkmuse:inspiration:genres", ["悬疑"]);
+  const [selectedDirection, setSelectedDirection] = usePersistedState("inkmuse:inspiration:direction", ["人物冲突"]);
+  const [selectedTone, setSelectedTone] = usePersistedState("inkmuse:inspiration:tone", ["暗黑"]);
+  const [count, setCount] = usePersistedState("inkmuse:inspiration:count", 3);
+  const [raw, setRaw] = usePersistedState("inkmuse:inspiration:raw", "");
+  const [ideas, setIdeas] = usePersistedState<GeneratedIdea[]>("inkmuse:inspiration:ideas", []);
+  const [expanded, setExpanded] = usePersistedState("inkmuse:inspiration:expanded", "");
   const [isLoading, setIsLoading] = useState(false);
   const [expandingTitle, setExpandingTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [queueState, setQueueState] = useState("");
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const favoriteIds = useMemo(() => {
+    const map = new Map<string, string>();
+    savedEntries
+      .filter((entry) => entry.source === "灵感坊")
+      .forEach((entry) => map.set(entry.title, entry.id));
+    return map;
+  }, [savedEntries]);
 
   const system = useMemo(
     () =>
@@ -139,6 +148,18 @@ export default function InspirationPage() {
     addToast({ title: "灵感已保存", type: "success" });
   }
 
+  function toggleFavorite(idea: GeneratedIdea) {
+    const existingId = favoriteIds.get(idea.title);
+
+    if (existingId) {
+      removeSavedEntry(existingId);
+      addToast({ title: "已取消收藏", type: "info" });
+      return;
+    }
+
+    saveIdea(idea);
+  }
+
   return (
     <ModuleFormShell
       title="灵感坊"
@@ -209,14 +230,8 @@ export default function InspirationPage() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Button
                       size="icon-sm"
-                      variant={favorites.includes(idea.title) ? "default" : "ghost"}
-                      onClick={() =>
-                        setFavorites((value) =>
-                          value.includes(idea.title)
-                            ? value.filter((item) => item !== idea.title)
-                            : [...value, idea.title],
-                        )
-                      }
+                      variant={favoriteIds.has(idea.title) ? "default" : "ghost"}
+                      onClick={() => toggleFavorite(idea)}
                     >
                       <Star className="h-4 w-4" />
                     </Button>

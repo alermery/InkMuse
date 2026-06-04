@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { settingEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
 import { useNovelStore } from "@/lib/store";
+import { usePersistedState } from "@/lib/use-persisted-state";
 import type { EncyclopediaEntry } from "@/types";
 
 const categories: EncyclopediaEntry["category"][] = ["角色", "世界观", "道具", "术语", "章节", "其他"];
@@ -26,11 +27,11 @@ export default function SettingPage() {
   const saveSetting = useNovelStore((state) => state.saveSetting);
   const removeSetting = useNovelStore((state) => state.removeSetting);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<string[]>(["世界观"]);
-  const [tags, setTags] = useState("");
-  const [sourceText, setSourceText] = useState("");
-  const [output, setOutput] = useState("");
+  const [query, setQuery] = usePersistedState("inkmuse:setting:query", "");
+  const [category, setCategory] = usePersistedState<string[]>("inkmuse:setting:category", ["世界观"]);
+  const [tags, setTags] = usePersistedState("inkmuse:setting:tags", "");
+  const [sourceText, setSourceText] = usePersistedState("inkmuse:setting:sourceText", "");
+  const [output, setOutput] = usePersistedState("inkmuse:setting:output", "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

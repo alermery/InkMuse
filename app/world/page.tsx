@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { savedEntryFromText, settingEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
 import { useNovelStore } from "@/lib/store";
+import { usePersistedState } from "@/lib/use-persisted-state";
 
 const categories = ["地理环境", "势力阵营", "力量体系", "历史年表", "社会规则"];
 const actions = ["自动补全关联设定", "一致性检查", "假如推演"];
@@ -18,10 +19,10 @@ export default function WorldPage() {
   const saveEntry = useNovelStore((state) => state.saveEntry);
   const saveSetting = useNovelStore((state) => state.saveSetting);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
-  const [category, setCategory] = useState(["力量体系"]);
-  const [action, setAction] = useState(["自动补全关联设定"]);
-  const [setting, setSetting] = useState("");
-  const [output, setOutput] = useState("");
+  const [category, setCategory] = usePersistedState("inkmuse:world:category", ["力量体系"]);
+  const [action, setAction] = usePersistedState("inkmuse:world:action", ["自动补全关联设定"]);
+  const [setting, setSetting] = usePersistedState("inkmuse:world:setting", "");
+  const [output, setOutput] = usePersistedState("inkmuse:world:output", "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

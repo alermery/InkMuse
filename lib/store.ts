@@ -26,6 +26,7 @@ type NovelStore = {
   toasts: ToastMessage[];
   savedEntries: SavedEntry[];
   encyclopediaEntries: EncyclopediaEntry[];
+  dailyStats: DailyWritingStat[];
   dailyGoal: number;
   weeklyGoal: number;
   writingMinutes: number;
@@ -53,6 +54,12 @@ type NovelStore = {
   setGoals: (dailyGoal: number, weeklyGoal: number) => void;
 };
 
+type DailyWritingStat = {
+  date: string;
+  words: number;
+  minutes: number;
+};
+
 const API_KEY_STORAGE = "novelmuse-api-key";
 const API_KEY_PERSISTENCE_STORAGE = "novelmuse-api-key-persistence";
 const STATE_STORAGE = "novelmuse-state";
@@ -69,23 +76,30 @@ type PersistedState = Pick<
   | "welcomeDismissed"
   | "savedEntries"
   | "encyclopediaEntries"
+  | "dailyStats"
   | "dailyGoal"
   | "weeklyGoal"
   | "writingMinutes"
 >;
 
 const initialDraft = "";
+const defaultModel: DeepSeekModel = "deepseek-v4-flash";
+
+function normalizeModel(value?: DeepSeekModel | "deepseek-chat") {
+  return value === "deepseek-v4-pro" ? value : defaultModel;
+}
 
 const defaultPersistedState: PersistedState = {
   chapterDraft: initialDraft,
   aiCallCount: 0,
   tokenUsage: 0,
   apiBalance: "未知",
-  model: "deepseek-chat",
+  model: defaultModel,
   sidebarCollapsed: false,
   welcomeDismissed: true,
   savedEntries: [],
   encyclopediaEntries: [],
+  dailyStats: [],
   dailyGoal: 3000,
   weeklyGoal: 18000,
   writingMinutes: 0,
@@ -181,11 +195,12 @@ function loadPersistedState(): PersistedState {
       aiCallCount: parsed.aiCallCount ?? 0,
       tokenUsage: parsed.tokenUsage ?? 0,
       apiBalance: parsed.apiBalance ?? "未知",
-      model: parsed.model ?? "deepseek-chat",
+      model: normalizeModel(parsed.model),
       sidebarCollapsed: parsed.sidebarCollapsed ?? false,
       welcomeDismissed: parsed.welcomeDismissed ?? true,
       savedEntries: parsed.savedEntries ?? [],
       encyclopediaEntries: parsed.encyclopediaEntries ?? [],
+      dailyStats: parsed.dailyStats ?? [],
       dailyGoal: parsed.dailyGoal ?? 3000,
       weeklyGoal: parsed.weeklyGoal ?? 18000,
       writingMinutes: parsed.writingMinutes ?? 0,
@@ -210,12 +225,40 @@ function persist(state: NovelStore) {
     welcomeDismissed: state.welcomeDismissed,
     savedEntries: state.savedEntries,
     encyclopediaEntries: state.encyclopediaEntries,
+    dailyStats: state.dailyStats,
     dailyGoal: state.dailyGoal,
     weeklyGoal: state.weeklyGoal,
     writingMinutes: state.writingMinutes,
   };
 
   window.localStorage.setItem(STATE_STORAGE, JSON.stringify(payload));
+}
+
+function plainTextLength(html: string) {
+  return html.replace(/<[^>]+>/g, "").trim().length;
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function updateDailyStats(stats: DailyWritingStat[], previousDraft: string, nextDraft: string) {
+  const previousWords = plainTextLength(previousDraft);
+  const nextWords = plainTextLength(nextDraft);
+  const wordDelta = Math.max(0, nextWords - previousWords);
+  const date = todayKey();
+  const nextMinutes = wordDelta > 0 ? Math.max(1, Math.ceil(wordDelta / 120)) : 0;
+  const existing = stats.find((item) => item.date === date);
+
+  if (!existing) {
+    return [...stats, { date, words: nextWords, minutes: nextMinutes }].slice(-14);
+  }
+
+  return stats.map((item) =>
+    item.date === date
+      ? { ...item, words: Math.max(item.words, nextWords), minutes: item.minutes + nextMinutes }
+      : item,
+  );
 }
 
 function createId(prefix: string) {
@@ -238,6 +281,7 @@ export const useNovelStore = create<NovelStore>((set) => ({
   toasts: [],
   savedEntries: defaultPersistedState.savedEntries,
   encyclopediaEntries: defaultPersistedState.encyclopediaEntries,
+  dailyStats: defaultPersistedState.dailyStats,
   dailyGoal: defaultPersistedState.dailyGoal,
   weeklyGoal: defaultPersistedState.weeklyGoal,
   writingMinutes: defaultPersistedState.writingMinutes,
@@ -270,6 +314,7 @@ export const useNovelStore = create<NovelStore>((set) => ({
       welcomeDismissed: persisted.welcomeDismissed,
       savedEntries: persisted.savedEntries,
       encyclopediaEntries: persisted.encyclopediaEntries,
+      dailyStats: persisted.dailyStats,
       dailyGoal: persisted.dailyGoal,
       weeklyGoal: persisted.weeklyGoal,
       writingMinutes: persisted.writingMinutes,
@@ -284,16 +329,20 @@ export const useNovelStore = create<NovelStore>((set) => ({
   setCurrentNovel: (novel) => set({ currentNovel: novel }),
   setChapterDraft: (value) =>
     set((state) => {
-      const next = { ...state, chapterDraft: value };
+      const dailyStats = updateDailyStats(state.dailyStats, state.chapterDraft, value);
+      const writingMinutes = dailyStats.reduce((sum, item) => sum + item.minutes, 0);
+      const next = { ...state, chapterDraft: value, dailyStats, writingMinutes };
       persist(next);
-      return { chapterDraft: value };
+      return { chapterDraft: value, dailyStats, writingMinutes };
     }),
   appendToDraft: (value) =>
     set((state) => {
       const nextDraft = `${state.chapterDraft}<hr /><div>${value}</div>`;
-      const next = { ...state, chapterDraft: nextDraft };
+      const dailyStats = updateDailyStats(state.dailyStats, state.chapterDraft, nextDraft);
+      const writingMinutes = dailyStats.reduce((sum, item) => sum + item.minutes, 0);
+      const next = { ...state, chapterDraft: nextDraft, dailyStats, writingMinutes };
       persist(next);
-      return { chapterDraft: nextDraft };
+      return { chapterDraft: nextDraft, dailyStats, writingMinutes };
     }),
   incrementAiCallCount: () =>
     set((state) => {

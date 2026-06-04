@@ -74,7 +74,6 @@ export interface EncyclopediaEntry {
 }
 
 export type DeepSeekModel =
-  | "deepseek-chat"
   | "deepseek-v4-flash"
   | "deepseek-v4-pro";
 

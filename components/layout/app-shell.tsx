@@ -24,6 +24,7 @@ export function AppShell({
   const pathname = usePathname();
   const currentProject = useNovelStore((state) => state.currentNovel);
   const sidebarCollapsed = useNovelStore((state) => state.sidebarCollapsed);
+  const projectGenre = currentProject?.genre?.trim();
 
   return (
     <div className="app-shell">
@@ -46,7 +47,7 @@ export function AppShell({
             >
               <div className="border-b border-white/10 px-6 py-5">
                 <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                  {currentProject?.genre ?? "创作工作流"}
+                  {projectGenre || "创作工作流"}
                 </p>
                 <h1 className="mt-2 text-3xl font-semibold tracking-normal">
                   {title}

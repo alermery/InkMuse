@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { savedEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
 import { useNovelStore } from "@/lib/store";
+import { usePersistedState } from "@/lib/use-persisted-state";
 
 const emotions = ["紧张", "温馨", "搞笑", "对峙"];
 const purposes = ["推动剧情", "展示性格", "制造冲突", "表白"];
@@ -18,11 +19,11 @@ export default function DialoguePage() {
   const saveEntry = useNovelStore((state) => state.saveEntry);
   const appendToDraft = useNovelStore((state) => state.appendToDraft);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
-  const [characters, setCharacters] = useState<string[]>([]);
-  const [scene, setScene] = useState("");
-  const [emotion, setEmotion] = useState(["对峙"]);
-  const [purpose, setPurpose] = useState(["制造冲突"]);
-  const [output, setOutput] = useState("");
+  const [characters, setCharacters] = usePersistedState<string[]>("inkmuse:dialogue:characters", []);
+  const [scene, setScene] = usePersistedState("inkmuse:dialogue:scene", "");
+  const [emotion, setEmotion] = usePersistedState("inkmuse:dialogue:emotion", ["对峙"]);
+  const [purpose, setPurpose] = usePersistedState("inkmuse:dialogue:purpose", ["制造冲突"]);
+  const [output, setOutput] = usePersistedState("inkmuse:dialogue:output", "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -31,7 +31,12 @@ export function SavedDock() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{entry.title}</p>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Badge variant="secondary" className="shrink-0 rounded-full">
+                      {entry.source}
+                    </Badge>
+                    <p className="truncate text-sm font-medium">{entry.title}</p>
+                  </div>
                   <p className="mt-1 line-clamp-2 text-xs leading-5 text-foreground/55">
                     {entry.content}
                   </p>

@@ -28,7 +28,7 @@ import { OptionChips } from "@/components/features/option-chips";
 import { useNovelStore } from "@/lib/store";
 import type { DeepSeekModel } from "@/types";
 
-const models: DeepSeekModel[] = ["deepseek-chat", "deepseek-v4-flash", "deepseek-v4-pro"];
+const models: DeepSeekModel[] = ["deepseek-v4-flash", "deepseek-v4-pro"];
 
 export function Navbar() {
   const { theme, mounted, toggleTheme } = useInkMuseTheme();

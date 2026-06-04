@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { savedEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
 import { useNovelStore } from "@/lib/store";
+import { usePersistedState } from "@/lib/use-persisted-state";
 
 type OutlineNode = {
   id: string;
@@ -114,12 +115,12 @@ export default function OutlinePage() {
   const addTokenUsage = useNovelStore((state) => state.addTokenUsage);
   const appendToDraft = useNovelStore((state) => state.appendToDraft);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
-  const [concept, setConcept] = useState("");
-  const [genre, setGenre] = useState("");
-  const [targetWords, setTargetWords] = useState("");
-  const [nodes, setNodes] = useState(initialNodes);
-  const [expanded, setExpanded] = useState(["core", "arc", "volumes", "volume-1"]);
-  const [output, setOutput] = useState("");
+  const [concept, setConcept] = usePersistedState("inkmuse:outline:concept", "");
+  const [genre, setGenre] = usePersistedState("inkmuse:outline:genre", "");
+  const [targetWords, setTargetWords] = usePersistedState("inkmuse:outline:targetWords", "");
+  const [nodes, setNodes] = usePersistedState("inkmuse:outline:nodes", initialNodes);
+  const [expanded, setExpanded] = usePersistedState("inkmuse:outline:expanded", ["core", "arc", "volumes", "volume-1"]);
+  const [output, setOutput] = usePersistedState("inkmuse:outline:output", "");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [queueState, setQueueState] = useState("");

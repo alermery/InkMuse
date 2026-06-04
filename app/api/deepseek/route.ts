@@ -8,7 +8,7 @@ type ChatMessage = {
   content: string;
 };
 
-type DeepSeekModel = "deepseek-chat" | "deepseek-v4-flash" | "deepseek-v4-pro";
+type DeepSeekModel = "deepseek-v4-flash" | "deepseek-v4-pro";
 
 const rateLimitWindowMs = 60_000;
 const maxRequestsPerWindow = 20;
@@ -38,6 +38,10 @@ function checkRateLimit(key: string) {
 
   bucket.count += 1;
   return null;
+}
+
+function normalizeModel(model?: string): DeepSeekModel {
+  return model === "deepseek-v4-pro" ? "deepseek-v4-pro" : "deepseek-v4-flash";
 }
 
 function sse(payload: { content?: string; error?: string } | "[DONE]") {
@@ -79,7 +83,7 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       messages?: ChatMessage[];
-      model?: DeepSeekModel;
+      model?: string;
       temperature?: number;
       maxTokens?: number;
       stream?: boolean;
@@ -102,7 +106,7 @@ export async function POST(request: Request) {
     }
 
     const completion = await client.chat.completions.create({
-      model: body.model ?? "deepseek-chat",
+      model: normalizeModel(body.model),
       messages,
       temperature: body.temperature ?? 0.85,
       max_tokens: body.maxTokens ?? 2000,

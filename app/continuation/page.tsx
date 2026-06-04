@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { savedEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
 import { useNovelStore } from "@/lib/store";
+import { usePersistedState } from "@/lib/use-persisted-state";
 
 const modes = ["续写模式", "润色模式", "改写模式", "扩写模式", "缩写模式", "情感注入"];
 const lengths = ["200字", "500字", "1000字"];
@@ -25,13 +26,13 @@ export default function ContinuationPage() {
   const appendToDraft = useNovelStore((state) => state.appendToDraft);
   const saveEntry = useNovelStore((state) => state.saveEntry);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
-  const [mode, setMode] = useState(["续写模式"]);
-  const [length, setLength] = useState(["500字"]);
-  const [temperature, setTemperature] = useState(0.85);
-  const [styleRef, setStyleRef] = useState("");
-  const [banWords, setBanWords] = useState("命运的齿轮, 他不知道的是");
+  const [mode, setMode] = usePersistedState("inkmuse:continuation:mode", ["续写模式"]);
+  const [length, setLength] = usePersistedState("inkmuse:continuation:length", ["500字"]);
+  const [temperature, setTemperature] = usePersistedState("inkmuse:continuation:temperature", 0.85);
+  const [styleRef, setStyleRef] = usePersistedState("inkmuse:continuation:styleRef", "");
+  const [banWords, setBanWords] = usePersistedState("inkmuse:continuation:banWords", "命运的齿轮, 他不知道的是");
   const [focusMode, setFocusMode] = useState(false);
-  const [output, setOutput] = useState("");
+  const [output, setOutput] = usePersistedState("inkmuse:continuation:output", "");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 

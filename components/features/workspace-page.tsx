@@ -35,15 +35,23 @@ const heatmap = Array.from({ length: 49 }, (unused, index) => ({
   level: 0,
 }));
 
-const chartData = [
-  { day: "周一", words: 0, minutes: 0 },
-  { day: "周二", words: 0, minutes: 0 },
-  { day: "周三", words: 0, minutes: 0 },
-  { day: "周四", words: 0, minutes: 0 },
-  { day: "周五", words: 0, minutes: 0 },
-  { day: "周六", words: 0, minutes: 0 },
-  { day: "周日", words: 0, minutes: 0 },
-];
+const weekDays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+
+const weeklyChartMargin = { top: 10, right: 30, bottom: 20, left: -28 };
+const weeklyXAxisProps = {
+  dataKey: "day",
+  stroke: "#94a3b8",
+  interval: 0,
+  tickMargin: 8,
+  minTickGap: 0,
+  tick: { fontSize: 12 },
+} as const;
+const weeklyYAxisProps = {
+  stroke: "#94a3b8",
+  width: 30,
+  tickMargin: 4,
+  tick: { fontSize: 12 },
+} as const;
 
 function subscribeToClientReady(callback: () => void) {
   const frame = requestAnimationFrame(callback);
@@ -58,12 +66,36 @@ function getServerSnapshot() {
   return false;
 }
 
+function weekKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function buildWeeklyChartData(dailyStats: { date: string; words: number; minutes: number }[]) {
+  const now = new Date();
+  const mondayOffset = (now.getDay() + 6) % 7;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - mondayOffset);
+
+  return weekDays.map((day, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    const stat = dailyStats.find((item) => item.date === weekKey(date));
+
+    return {
+      day,
+      words: stat?.words ?? 0,
+      minutes: stat?.minutes ?? 0,
+    };
+  });
+}
+
 export function WorkspacePage() {
   const apiKey = useNovelStore((state) => state.apiKey);
   const model = useNovelStore((state) => state.model);
   const currentNovel = useNovelStore((state) => state.currentNovel);
   const chapterDraft = useNovelStore((state) => state.chapterDraft);
   const savedEntries = useNovelStore((state) => state.savedEntries);
+  const dailyStats = useNovelStore((state) => state.dailyStats);
   const dailyGoal = useNovelStore((state) => state.dailyGoal);
   const weeklyGoal = useNovelStore((state) => state.weeklyGoal);
   const writingMinutes = useNovelStore((state) => state.writingMinutes);
@@ -89,6 +121,7 @@ export function WorkspacePage() {
   const dailyProgress = Math.min(100, Math.round((wordCount / dailyGoal) * 100));
   const weeklyProgress = Math.min(100, Math.round(((wordCount * 4) / weeklyGoal) * 100));
   const hasWritingData = wordCount > 0 || writingMinutes > 0;
+  const chartData = useMemo(() => buildWeeklyChartData(dailyStats), [dailyStats]);
 
   const words = useMemo(() => {
     const source = plainText(chapterDraft);
@@ -108,7 +141,7 @@ export function WorkspacePage() {
     () => [
       { label: "今日字数", value: wordCount, suffix: "", icon: BookOpen },
       { label: "写作时长", value: writingMinutes, suffix: "m", icon: Clock },
-      { label: "效率", value: Math.max(1, Math.round(wordCount / Math.max(1, writingMinutes))), suffix: " 字/分", icon: Flame },
+      { label: "效率", value: writingMinutes > 0 ? Math.round(wordCount / writingMinutes) : 0, suffix: " 字/分", icon: Flame },
       { label: "收藏素材", value: savedEntries.length, suffix: "", icon: Save },
     ],
     [savedEntries.length, wordCount, writingMinutes],
@@ -189,12 +222,12 @@ export function WorkspacePage() {
               <div className="mt-4 h-56 min-h-56 min-w-0">
                 {chartsReady && hasWritingData ? (
                   <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
-                        <XAxis dataKey="day" stroke="#94a3b8" interval={0} />
-                        <YAxis stroke="#94a3b8" />
-                        <Tooltip />
-                        <Bar dataKey="words" fill="#7c3aed" radius={[6, 6, 0, 0]} />
+                    <BarChart data={chartData} margin={weeklyChartMargin}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
+                      <XAxis {...weeklyXAxisProps} />
+                      <YAxis {...weeklyYAxisProps} />
+                      <Tooltip />
+                      <Bar dataKey="words" fill="#7c3aed" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -209,11 +242,11 @@ export function WorkspacePage() {
               <div className="mt-4 h-56 min-h-56 min-w-0">
                 {chartsReady && hasWritingData ? (
                   <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
-                        <XAxis dataKey="day" stroke="#94a3b8" interval={0} />
-                        <YAxis stroke="#94a3b8" />
-                        <Tooltip />
+                    <LineChart data={chartData} margin={weeklyChartMargin}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
+                      <XAxis {...weeklyXAxisProps} />
+                      <YAxis {...weeklyYAxisProps} />
+                      <Tooltip />
                         <Line type="monotone" dataKey="minutes" stroke="#06b6d4" strokeWidth={3} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
