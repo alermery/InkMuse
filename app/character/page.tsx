@@ -121,7 +121,7 @@ export default function CharacterPage() {
               AI 性格标签
             </Button>
             <SavedImportPanel
-              sourceFilter={["角色", "瑙掕壊"]}
+              sourceFilter={["角色", "瑙掕壊", "本地导入"]}
               onImport={(entry) => {
                 setName(entry.title.replace(/\s*角色档案$/, ""));
                 setProfile(entry.content);

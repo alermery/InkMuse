@@ -197,7 +197,7 @@ export default function InspirationPage() {
               生成灵感
             </Button>
             <SavedImportPanel
-              sourceFilter={["灵感坊", "鐏垫劅鍧?", "工作台", "宸ヤ綔鍙?"]}
+              sourceFilter={["灵感坊", "鐏垫劅鍧?", "工作台", "宸ヤ綔鍙?", "本地导入"]}
               onImport={(entry) => {
                 setExpanded(entry.content);
                 addToast({ title: "已导入收藏，可在扩展区继续修改", type: "success" });

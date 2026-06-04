@@ -86,7 +86,7 @@ export default function DialoguePage() {
               插入当前章节
             </Button>
             <SavedImportPanel
-              sourceFilter={["对话", "瀵硅瘽"]}
+              sourceFilter={["对话", "瀵硅瘽", "本地导入"]}
               onImport={(entry) => {
                 setScene(entry.content);
                 setOutput(entry.content);
