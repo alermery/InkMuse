@@ -60,19 +60,47 @@ function renderPlain(nodes: OutlineNode[], depth = 0): string {
     .join("\n");
 }
 
+function renameNode(nodes: OutlineNode[], id: string, title: string): OutlineNode[] {
+  return nodes.map((node) => {
+    if (node.id === id) {
+      return { ...node, title };
+    }
+
+    if (node.children) {
+      return { ...node, children: renameNode(node.children, id, title) };
+    }
+
+    return node;
+  });
+}
+
 function OutlineBranch({
   node,
   expanded,
   onToggle,
   onAction,
+  onRename,
 }: {
   node: OutlineNode;
   expanded: string[];
   onToggle: (id: string) => void;
   onAction: (node: OutlineNode, action: string) => void;
+  onRename: (id: string, title: string) => void;
 }) {
   const isExpanded = expanded.includes(node.id);
   const hasChildren = Boolean(node.children?.length);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(node.title);
+
+  function commitRename() {
+    const nextTitle = draftTitle.trim();
+    if (nextTitle && nextTitle !== node.title) {
+      onRename(node.id, nextTitle);
+    } else {
+      setDraftTitle(node.title);
+    }
+    setIsEditing(false);
+  }
 
   return (
     <div className="rounded-lg border border-white/10 bg-black/10 p-2">
@@ -81,7 +109,33 @@ function OutlineBranch({
         <TooltipButton tooltip={isExpanded ? "收起节点" : "展开节点"} size="icon-xs" variant="ghost" onClick={() => onToggle(node.id)}>
           {hasChildren && isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </TooltipButton>
-        <p className="min-w-0 flex-1 truncate text-sm font-medium">{node.title}</p>
+        {isEditing ? (
+          <Input
+            value={draftTitle}
+            autoFocus
+            onChange={(event) => setDraftTitle(event.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                commitRename();
+              }
+              if (event.key === "Escape") {
+                setDraftTitle(node.title);
+                setIsEditing(false);
+              }
+            }}
+            className="h-7 min-w-0 flex-1 border-primary/30 bg-background/70"
+          />
+        ) : (
+          <button
+            type="button"
+            className="min-w-0 flex-1 truncate rounded-md px-2 py-1 text-left text-sm font-medium transition hover:bg-primary/8 hover:text-primary"
+            title="双击或点击可重命名"
+            onClick={() => setIsEditing(true)}
+          >
+            {node.title}
+          </button>
+        )}
         <Button size="sm" variant="ghost" onClick={() => onAction(node, "扩展此章节")}>
           扩展
         </Button>
@@ -101,6 +155,7 @@ function OutlineBranch({
               expanded={expanded}
               onToggle={onToggle}
               onAction={onAction}
+              onRename={onRename}
             />
           ))}
         </div>
@@ -129,6 +184,11 @@ export default function OutlinePage() {
 
   function toggle(id: string) {
     setExpanded((value) => (value.includes(id) ? value.filter((item) => item !== id) : [...value, id]));
+  }
+
+  function handleRenameNode(id: string, title: string) {
+    setNodes((value) => renameNode(value, id, title));
+    addToast({ title: "章节名已更新", type: "success" });
   }
 
   async function generateOutline() {
@@ -226,7 +286,6 @@ export default function OutlinePage() {
               添加节点
             </Button>
             <SavedImportPanel
-              sourceFilter={["大纲", "澶х翰", "本地导入"]}
               onImport={(entry) => {
                 setOutput(entry.content);
                 addToast({ title: "已导入收藏，可继续编辑大纲", type: "success" });
@@ -250,7 +309,14 @@ export default function OutlinePage() {
             </div>
             <div className="space-y-2">
               {nodes.map((node) => (
-                <OutlineBranch key={node.id} node={node} expanded={expanded} onToggle={toggle} onAction={nodeAction} />
+                <OutlineBranch
+                  key={node.id}
+                  node={node}
+                  expanded={expanded}
+                  onToggle={toggle}
+                  onAction={nodeAction}
+                  onRename={handleRenameNode}
+                />
               ))}
             </div>
           </section>

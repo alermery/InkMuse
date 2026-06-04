@@ -30,11 +30,6 @@ function plainText(html: string) {
   return html.replace(/<[^>]+>/g, "").trim();
 }
 
-const heatmap = Array.from({ length: 49 }, (unused, index) => ({
-  day: index,
-  level: 0,
-}));
-
 const weekDays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 
 const weeklyChartMargin = { top: 10, right: 30, bottom: 20, left: -28 };
@@ -91,6 +86,40 @@ function buildWeeklyChartData(dailyStats: { date: string; words: number; minutes
   });
 }
 
+function buildWritingCalendarData(
+  dailyStats: { date: string; words: number; minutes: number }[],
+  dailyGoal: number,
+) {
+  const today = new Date();
+  const end = new Date(today);
+  const start = new Date(today);
+  start.setDate(today.getDate() - 34);
+  const mondayOffset = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - mondayOffset);
+
+  return Array.from({ length: 35 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const key = weekKey(date);
+    const stat = dailyStats.find((item) => item.date === key);
+    const words = stat?.words ?? 0;
+    const minutes = stat?.minutes ?? 0;
+    const progress = dailyGoal > 0 ? Math.min(100, Math.round((words / dailyGoal) * 100)) : 0;
+    const isToday = key === weekKey(end);
+
+    return {
+      key,
+      date,
+      day: date.getDate(),
+      month: date.getMonth() + 1,
+      words,
+      minutes,
+      progress,
+      isToday,
+    };
+  });
+}
+
 export function WorkspacePage() {
   const apiKey = useNovelStore((state) => state.apiKey);
   const model = useNovelStore((state) => state.model);
@@ -128,6 +157,10 @@ export function WorkspacePage() {
   const weeklyProgress = Math.min(100, Math.round(((wordCount * 4) / weeklyGoal) * 100));
   const hasWritingData = wordCount > 0 || writingMinutes > 0;
   const chartData = useMemo(() => buildWeeklyChartData(dailyStats), [dailyStats]);
+  const calendarData = useMemo(
+    () => buildWritingCalendarData(dailyStats, dailyGoal),
+    [dailyGoal, dailyStats],
+  );
 
   const words = useMemo(() => {
     const source = plainText(chapterDraft);
@@ -323,17 +356,57 @@ export function WorkspacePage() {
             </div>
           </section>
           <section className="glass-panel rounded-lg border p-4">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-semibold">写作日历</h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold">写作日历</h2>
+              </div>
+              <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+                <span>近 5 周</span>
+                <span>今日 {wordCount.toLocaleString()} 字</span>
+                <span>目标 {dailyGoal.toLocaleString()} 字/日</span>
+              </div>
             </div>
-            <div className="mt-4 grid grid-cols-7 gap-2">
-              {heatmap.map((day) => (
+            <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs text-muted-foreground">
+              {weekDays.map((day) => (
+                <span key={day}>{day}</span>
+              ))}
+            </div>
+            <div className="mt-2 grid grid-cols-7 gap-2">
+              {calendarData.map((day) => (
                 <div
-                  key={day.day}
-                  className="aspect-square rounded-sm border border-white/10"
-                  style={{ backgroundColor: `rgba(6, 182, 212, ${0.08 + day.level * 0.16})` }}
-                />
+                  key={day.key}
+                  title={`${day.month}/${day.day} · ${day.words} 字 · ${day.minutes} 分钟 · ${day.progress}%`}
+                  className={[
+                    "min-h-24 rounded-xl border p-2 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm",
+                    day.isToday ? "border-primary/45 ring-2 ring-primary/15" : "border-white/10",
+                    day.words ? "bg-primary/10" : "bg-muted/30",
+                  ].join(" ")}
+                  style={{
+                    backgroundColor: day.words
+                      ? `rgba(6, 182, 212, ${0.12 + Math.min(0.5, day.progress / 160)})`
+                      : undefined,
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-foreground">{day.day}</span>
+                    {day.isToday ? (
+                      <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary">
+                        今日
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 space-y-1 text-left text-[11px] text-muted-foreground">
+                    <p>{day.words ? `${day.words.toLocaleString()} 字` : "未记录"}</p>
+                    <p>{day.minutes ? `${day.minutes} 分钟` : "暂无时长"}</p>
+                  </div>
+                  <div className="mt-2 h-1.5 rounded-full bg-background/60">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${day.progress}%` }}
+                    />
+                  </div>
+                </div>
               ))}
             </div>
           </section>

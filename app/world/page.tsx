@@ -73,7 +73,6 @@ export default function WorldPage() {
               执行
             </Button>
             <SavedImportPanel
-              sourceFilter={["世界观", "涓栫晫瑙?", "本地导入"]}
               onImport={(entry) => {
                 setSetting(entry.content);
                 setOutput(entry.content);

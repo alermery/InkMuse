@@ -114,7 +114,6 @@ export default function ContinuationPage() {
               专注模式
             </Button>
             <SavedImportPanel
-              sourceFilter={["续写", "缁啓", "本地导入"]}
               onImport={(entry) => {
                 setStyleRef(entry.content);
                 setOutput(entry.content);

@@ -91,7 +91,6 @@ export default function SettingPage() {
               AI 自动提取
             </Button>
             <SavedImportPanel
-              sourceFilter={["设定集", "璁惧畾闆?", "角色", "瑙掕壊", "世界观", "涓栫晫瑙?", "本地导入"]}
               onImport={(entry) => {
                 setSourceText(entry.content);
                 setOutput(entry.content);
