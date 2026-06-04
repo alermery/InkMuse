@@ -1,15 +1,51 @@
+type Env = {
+  ASSETS: Fetcher;
+  DEEPSEEK_API_KEY?: string;
+};
+
 type ChatMessage = {
   role: "system" | "user" | "assistant";
   content: string;
 };
 
-type Env = {
-  DEEPSEEK_API_KEY?: string;
+type DeepSeekBalanceInfo = {
+  currency?: string;
+  total_balance?: string;
+};
+
+type DeepSeekBalanceResponse = {
+  is_available?: boolean;
+  balance_infos?: DeepSeekBalanceInfo[];
 };
 
 const rateLimitWindowMs = 60_000;
 const maxRequestsPerWindow = 20;
 const requestBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function sse(payload: { content?: string; error?: string } | "[DONE]") {
+  return payload === "[DONE]" ? "data: [DONE]\n\n" : `data: ${JSON.stringify(payload)}\n\n`;
+}
+
+function streamText(content: string, status = 200) {
+  const encoder = new TextEncoder();
+
+  return new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(sse(status >= 400 ? { error: content } : { content })));
+        controller.enqueue(encoder.encode(sse("[DONE]")));
+        controller.close();
+      },
+    }),
+    {
+      status,
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    },
+  );
+}
 
 function getClientKey(request: Request) {
   return (
@@ -41,32 +77,17 @@ function normalizeModel(model?: string) {
   return model === "deepseek-v4-pro" ? "deepseek-v4-pro" : "deepseek-v4-flash";
 }
 
-function sse(payload: { content?: string; error?: string } | "[DONE]") {
-  return payload === "[DONE]" ? "data: [DONE]\n\n" : `data: ${JSON.stringify(payload)}\n\n`;
+function formatBalanceDisplay(balanceInfos: DeepSeekBalanceInfo[] = []) {
+  if (!balanceInfos.length) {
+    return "0";
+  }
+
+  return balanceInfos
+    .map((item) => `${item.total_balance ?? "0"} ${item.currency ?? "CNY"}`)
+    .join(" / ");
 }
 
-function streamText(content: string, status = 200) {
-  const encoder = new TextEncoder();
-
-  return new Response(
-    new ReadableStream({
-      start(controller) {
-        controller.enqueue(encoder.encode(sse(status >= 400 ? { error: content } : { content })));
-        controller.enqueue(encoder.encode(sse("[DONE]")));
-        controller.close();
-      },
-    }),
-    {
-      status,
-      headers: {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-store",
-      },
-    },
-  );
-}
-
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+async function handleDeepSeek(request: Request, env: Env) {
   const retryAfter = checkRateLimit(getClientKey(request));
 
   if (retryAfter) {
@@ -120,7 +141,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       new ReadableStream({
         async start(controller) {
           const reader = response.body?.getReader();
-
           if (!reader) {
             controller.enqueue(encoder.encode(sse({ error: "DeepSeek 未返回流式响应。" })));
             controller.enqueue(encoder.encode(sse("[DONE]")));
@@ -185,4 +205,68 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   } catch (error) {
     return streamText(error instanceof Error ? error.message : "DeepSeek 请求失败。", 500);
   }
+}
+
+async function handleBalance(request: Request, env: Env) {
+  const apiKey = request.headers.get("x-deepseek-api-key") ?? env.DEEPSEEK_API_KEY;
+
+  if (!apiKey) {
+    return Response.json({ error: "未检测到 DeepSeek API Key。" }, { status: 401 });
+  }
+
+  try {
+    const response = await fetch("https://api.deepseek.com/user/balance", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    });
+    const text = await response.text();
+    const payload = text
+      ? (JSON.parse(text) as DeepSeekBalanceResponse & { error?: { message?: string } })
+      : null;
+
+    if (!response.ok) {
+      const message = payload?.error?.message ?? `DeepSeek 余额查询失败：${response.status}`;
+      return Response.json({ error: message }, { status: response.status });
+    }
+
+    const balanceInfos = payload?.balance_infos ?? [];
+
+    return Response.json({
+      isAvailable: payload?.is_available ?? false,
+      balanceInfos,
+      display: formatBalanceDisplay(balanceInfos),
+    });
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof Error
+            ? `DeepSeek 余额查询失败：${error.message}`
+            : "DeepSeek 余额查询失败。",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+const worker = {
+  async fetch(request: Request, env: Env) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/api/deepseek" && request.method === "POST") {
+      return handleDeepSeek(request, env);
+    }
+
+    if (url.pathname === "/api/deepseek/balance" && request.method === "GET") {
+      return handleBalance(request, env);
+    }
+
+    return env.ASSETS.fetch(request);
+  },
 };
+
+export default worker;
