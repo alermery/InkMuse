@@ -9,8 +9,8 @@ import {
   Settings2,
   SunMedium,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { ExportMenu } from "@/components/features/export-menu";
+import { useInkMuseTheme } from "@/components/providers/app-providers";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,7 +28,7 @@ import type { DeepSeekModel } from "@/types";
 const models: DeepSeekModel[] = ["deepseek-chat", "deepseek-v4-flash", "deepseek-v4-pro"];
 
 export function Navbar() {
-  const { setTheme, resolvedTheme } = useTheme();
+  const { theme, mounted, toggleTheme } = useInkMuseTheme();
   const apiKey = useNovelStore((state) => state.apiKey);
   const model = useNovelStore((state) => state.model);
   const apiBalance = useNovelStore((state) => state.apiBalance);
@@ -56,7 +56,7 @@ export function Navbar() {
           </div>
           <div>
             <p className="text-sm font-semibold uppercase tracking-normal text-foreground/90">
-              NovelMuse
+              InkMuse
             </p>
             <p className="text-xs text-foreground/50">
               灵感、结构、写作与设定协同工作台
@@ -76,11 +76,9 @@ export function Navbar() {
             variant="ghost"
             size="icon"
             className="rounded-xl border border-white/10 bg-white/5 transition hover:-translate-y-0.5 hover:bg-white/10 hover:shadow-[0_0_24px_rgba(6,182,212,0.16)]"
-            onClick={() =>
-              setTheme(resolvedTheme === "dark" ? "light" : "dark")
-            }
+            onClick={toggleTheme}
           >
-            {resolvedTheme === "dark" ? (
+            {mounted && theme === "dark" ? (
               <SunMedium className="h-4 w-4" />
             ) : (
               <MoonStar className="h-4 w-4" />

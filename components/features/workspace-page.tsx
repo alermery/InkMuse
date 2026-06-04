@@ -22,8 +22,7 @@ import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { WelcomeExperience } from "@/components/features/welcome-experience";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { defaultChapters, defaultNovel } from "@/lib/mock-data";
+import { defaultNovel } from "@/lib/mock-data";
 import { savedEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
 import { useNovelStore } from "@/lib/store";
 
@@ -31,19 +30,19 @@ function plainText(html: string) {
   return html.replace(/<[^>]+>/g, "").trim();
 }
 
-const heatmap = Array.from({ length: 49 }, (_, index) => ({
+const heatmap = Array.from({ length: 49 }, (unused, index) => ({
   day: index,
-  level: (index * 7 + 3) % 5,
+  level: 0,
 }));
 
 const chartData = [
-  { day: "周一", words: 1800, minutes: 54 },
-  { day: "周二", words: 2600, minutes: 72 },
-  { day: "周三", words: 1200, minutes: 38 },
-  { day: "周四", words: 3400, minutes: 96 },
-  { day: "周五", words: 2900, minutes: 80 },
-  { day: "周六", words: 4200, minutes: 114 },
-  { day: "周日", words: 3100, minutes: 88 },
+  { day: "周一", words: 0, minutes: 0 },
+  { day: "周二", words: 0, minutes: 0 },
+  { day: "周三", words: 0, minutes: 0 },
+  { day: "周四", words: 0, minutes: 0 },
+  { day: "周五", words: 0, minutes: 0 },
+  { day: "周六", words: 0, minutes: 0 },
+  { day: "周日", words: 0, minutes: 0 },
 ];
 
 function subscribeToClientReady(callback: () => void) {
@@ -89,10 +88,13 @@ export function WorkspacePage() {
   const wordCount = plainText(chapterDraft).length;
   const dailyProgress = Math.min(100, Math.round((wordCount / dailyGoal) * 100));
   const weeklyProgress = Math.min(100, Math.round(((wordCount * 4) / weeklyGoal) * 100));
-  const completed = defaultChapters.filter((chapter) => chapter.status === "已完成").length;
+  const hasWritingData = wordCount > 0 || writingMinutes > 0;
 
   const words = useMemo(() => {
-    const source = plainText(chapterDraft) || "记忆 港城 律师 真相 角色 冲突 设定 记忆 港城";
+    const source = plainText(chapterDraft);
+    if (!source) {
+      return [];
+    }
     const map = new Map<string, number>();
     source
       .replace(/[，。！？、,.!?]/g, " ")
@@ -185,7 +187,7 @@ export function WorkspacePage() {
             <div className="glass-panel rounded-lg border p-4">
               <h2 className="text-sm font-semibold">每日字数</h2>
               <div className="mt-4 h-56 min-h-56 min-w-0">
-                {chartsReady ? (
+                {chartsReady && hasWritingData ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
@@ -195,13 +197,17 @@ export function WorkspacePage() {
                       <Bar dataKey="words" fill="#7c3aed" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
-                ) : null}
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    暂无写作统计
+                  </div>
+                )}
               </div>
             </div>
             <div className="glass-panel rounded-lg border p-4">
               <h2 className="text-sm font-semibold">写作时长</h2>
               <div className="mt-4 h-56 min-h-56 min-w-0">
-                {chartsReady ? (
+                {chartsReady && hasWritingData ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
@@ -211,7 +217,11 @@ export function WorkspacePage() {
                       <Line type="monotone" dataKey="minutes" stroke="#06b6d4" strokeWidth={3} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
-                ) : null}
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    暂无时长记录
+                  </div>
+                )}
               </div>
             </div>
           </section>
@@ -219,13 +229,13 @@ export function WorkspacePage() {
             <div className="glass-panel rounded-lg border p-4">
               <h2 className="text-sm font-semibold">章节完成</h2>
               <div className="mt-4 h-56 min-h-56 min-w-0">
-                {chartsReady ? (
+                {chartsReady && wordCount > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={[
-                          { name: "已完成", value: completed },
-                          { name: "未完成", value: defaultChapters.length - completed },
+                          { name: "已写", value: wordCount },
+                          { name: "目标差额", value: Math.max(1, dailyGoal - wordCount) },
                         ]}
                         innerRadius={58}
                         outerRadius={82}
@@ -237,13 +247,17 @@ export function WorkspacePage() {
                       <Tooltip />
                     </PieChart>
                   </ResponsiveContainer>
-                ) : null}
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    开始写作后显示进度
+                  </div>
+                )}
               </div>
             </div>
             <div className="glass-panel rounded-lg border p-4">
               <h2 className="text-sm font-semibold">词频分析</h2>
               <div className="mt-4 flex min-h-56 flex-wrap content-start gap-3">
-                {words.map(([word, count], index) => (
+                {words.length ? words.map(([word, count], index) => (
                   <span
                     key={word}
                     className="rounded-full border border-white/10 bg-white/8 px-3 py-1"
@@ -251,7 +265,11 @@ export function WorkspacePage() {
                   >
                     {word}
                   </span>
-                ))}
+                )) : (
+                  <div className="flex min-h-40 flex-1 items-center justify-center text-sm text-muted-foreground">
+                    暂无可分析文本
+                  </div>
+                )}
               </div>
             </div>
           </section>
@@ -276,15 +294,9 @@ export function WorkspacePage() {
               <h2 className="text-sm font-semibold">最近章节</h2>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {defaultChapters.map((chapter) => (
-                <article key={chapter.id} className="hover-lift rounded-lg border border-white/10 bg-black/10 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-sm font-medium">{chapter.title}</p>
-                    <Badge variant="secondary">{chapter.status}</Badge>
-                  </div>
-                  <p className="mt-2 text-xs text-muted-foreground">{chapter.wordCount.toLocaleString()} 字</p>
-                </article>
-              ))}
+              <div className="rounded-lg border border-white/10 bg-black/10 p-4 text-sm text-muted-foreground">
+                暂无章节。保存或导入章节后会在这里显示快捷入口。
+              </div>
             </div>
           </section>
         </div>

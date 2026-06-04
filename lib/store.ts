@@ -69,8 +69,7 @@ type PersistedState = Pick<
   | "writingMinutes"
 >;
 
-const initialDraft =
-  "<p>雨下得太密，港区的霓虹被撕成一片片漂浮的颜色。闻昭站在十二号码头尽头，像站在一段被人剪坏的记忆里。</p>";
+const initialDraft = "";
 
 function loadStoredApiKey() {
   if (typeof window === "undefined") {
@@ -125,7 +124,7 @@ function loadPersistedState(): PersistedState {
       apiBalance: "未知",
       model: "deepseek-chat",
       sidebarCollapsed: false,
-      welcomeDismissed: false,
+      welcomeDismissed: true,
       savedEntries: [],
       encyclopediaEntries: [],
       dailyGoal: 3000,
@@ -149,7 +148,7 @@ function loadPersistedState(): PersistedState {
       apiBalance: parsed.apiBalance ?? "未知",
       model: parsed.model ?? "deepseek-chat",
       sidebarCollapsed: parsed.sidebarCollapsed ?? false,
-      welcomeDismissed: parsed.welcomeDismissed ?? false,
+      welcomeDismissed: parsed.welcomeDismissed ?? true,
       savedEntries: parsed.savedEntries ?? [],
       encyclopediaEntries: parsed.encyclopediaEntries ?? [],
       dailyGoal: parsed.dailyGoal ?? 3000,
@@ -164,7 +163,7 @@ function loadPersistedState(): PersistedState {
       apiBalance: "未知",
       model: "deepseek-chat",
       sidebarCollapsed: false,
-      welcomeDismissed: false,
+      welcomeDismissed: true,
       savedEntries: [],
       encyclopediaEntries: [],
       dailyGoal: 3000,

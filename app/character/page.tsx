@@ -5,11 +5,9 @@ import { Loader2, MessageCircle, UserRound, Wand2 } from "lucide-react";
 import { ModuleFormShell } from "@/components/features/module-form-shell";
 import { OptionChips } from "@/components/features/option-chips";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { defaultCharacters } from "@/lib/mock-data";
 import { savedEntryFromText, settingEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
 import { useNovelStore } from "@/lib/store";
 
@@ -21,13 +19,13 @@ export default function CharacterPage() {
   const saveEntry = useNovelStore((state) => state.saveEntry);
   const saveSetting = useNovelStore((state) => state.saveSetting);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
-  const [name, setName] = useState("闻昭");
-  const [age, setAge] = useState("31");
-  const [gender, setGender] = useState("男");
-  const [identity, setIdentity] = useState("失意律师");
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState("");
+  const [identity, setIdentity] = useState("");
   const [role, setRole] = useState(["主角"]);
-  const [traits, setTraits] = useState(["克制", "敏锐"]);
-  const [question, setQuestion] = useState("你最大的遗憾是什么？");
+  const [traits, setTraits] = useState<string[]>([]);
+  const [question, setQuestion] = useState("");
   const [profile, setProfile] = useState("");
   const [interview, setInterview] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -124,28 +122,11 @@ export default function CharacterPage() {
       }
       right={
         <div className="space-y-5">
-          <section className="grid gap-4 md:grid-cols-3">
-            {defaultCharacters.map((character) => (
-              <article key={character.id} className="group min-h-48 [perspective:1000px]">
-                <div className="relative h-full rounded-lg transition duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
-                  <div className="glass-panel absolute inset-0 rounded-lg border p-4 [backface-visibility:hidden]">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-white/10">
-                      <UserRound className="h-7 w-7 text-primary" />
-                    </div>
-                    <h2 className="mt-4 text-base font-semibold">{character.name}</h2>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {character.personality.map((trait) => (
-                        <Badge key={trait} variant="secondary">{trait}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="glass-panel absolute inset-0 rounded-lg border p-4 [backface-visibility:hidden] [transform:rotateY(180deg)]">
-                    <p className="text-sm leading-6 text-foreground/75">{character.background}</p>
-                    <p className="mt-3 text-xs leading-5 text-foreground/50">动机：{character.motivation}</p>
-                  </div>
-                </div>
-              </article>
-            ))}
+          <section className="glass-panel rounded-lg border p-5 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <UserRound className="h-4 w-4 text-primary" />
+              <span>角色库为空。生成并保存角色档案后会在这里形成角色资料。</span>
+            </div>
           </section>
           <StreamResultPanel
             title="角色档案"

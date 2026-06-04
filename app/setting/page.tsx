@@ -28,7 +28,7 @@ export default function SettingPage() {
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string[]>(["世界观"]);
-  const [tags, setTags] = useState("记忆, 港城");
+  const [tags, setTags] = useState("");
   const [sourceText, setSourceText] = useState("");
   const [output, setOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);

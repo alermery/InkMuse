@@ -7,7 +7,6 @@ import { OptionChips } from "@/components/features/option-chips";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { defaultCharacters } from "@/lib/mock-data";
 import { savedEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
 import { useNovelStore } from "@/lib/store";
 
@@ -19,8 +18,8 @@ export default function DialoguePage() {
   const saveEntry = useNovelStore((state) => state.saveEntry);
   const appendToDraft = useNovelStore((state) => state.appendToDraft);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
-  const [characters, setCharacters] = useState(["闻昭", "黎岚"]);
-  const [scene, setScene] = useState("雨夜码头，两人发现委托人留下的证词是伪造的。");
+  const [characters, setCharacters] = useState<string[]>([]);
+  const [scene, setScene] = useState("");
   const [emotion, setEmotion] = useState(["对峙"]);
   const [purpose, setPurpose] = useState(["制造冲突"]);
   const [output, setOutput] = useState("");
@@ -61,7 +60,7 @@ export default function DialoguePage() {
           <div className="space-y-5">
             <div>
               <p className="mb-2 text-sm font-medium">参与角色</p>
-              <OptionChips options={defaultCharacters.map((item) => item.name)} value={characters} onChange={setCharacters} multi />
+              <OptionChips options={["角色A", "角色B", "角色C"]} value={characters} onChange={setCharacters} multi />
             </div>
             <div>
               <p className="mb-2 text-sm font-medium">场景描述</p>

@@ -7,7 +7,6 @@ import { OptionChips } from "@/components/features/option-chips";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { defaultWorldSettings } from "@/lib/mock-data";
 import { savedEntryFromText, settingEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
 import { useNovelStore } from "@/lib/store";
 
@@ -21,7 +20,7 @@ export default function WorldPage() {
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
   const [category, setCategory] = useState(["力量体系"]);
   const [action, setAction] = useState(["自动补全关联设定"]);
-  const [setting, setSetting] = useState("记忆可以被切片交易，但完整人格记忆被法律禁止。");
+  const [setting, setSetting] = useState("");
   const [output, setOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,17 +74,11 @@ export default function WorldPage() {
       }
       right={
         <div className="space-y-5">
-          <section className="grid gap-3 md:grid-cols-3">
-            {defaultWorldSettings.map((item) => (
-              <article key={item.id} className="glass-panel rounded-lg border p-4">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-primary" />
-                  <h2 className="truncate text-sm font-semibold">{item.title}</h2>
-                </div>
-                <p className="mt-3 text-xs text-foreground/50">{item.category}</p>
-                <p className="serif-body mt-2 text-sm leading-6 text-foreground/72">{item.content}</p>
-              </article>
-            ))}
+          <section className="glass-panel rounded-lg border p-5 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <span>暂无世界观条目。输入基础设定后可生成并保存到设定集。</span>
+            </div>
           </section>
           <StreamResultPanel
             title="世界观输出"

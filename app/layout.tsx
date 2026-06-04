@@ -4,7 +4,7 @@ import { AppProviders } from "@/components/providers/app-providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "NovelMuse",
+  title: "InkMuse",
   description: "AI小说灵感与辅助写作助手",
 };
 

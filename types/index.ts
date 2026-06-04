@@ -73,7 +73,10 @@ export interface EncyclopediaEntry {
   createdAt: string;
 }
 
-export type DeepSeekModel = "deepseek-v4-flash" | "deepseek-v4-pro";
+export type DeepSeekModel =
+  | "deepseek-chat"
+  | "deepseek-v4-flash"
+  | "deepseek-v4-pro";
 
 export interface ToastMessage {
   id: string;

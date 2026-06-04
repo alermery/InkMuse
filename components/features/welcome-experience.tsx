@@ -6,8 +6,6 @@ import { BookOpen, FolderOpen, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNovelStore } from "@/lib/store";
 
-const features = ["流式 AI 写作", "角色面试", "设定集提取", "ZIP 导出", "命令面板"];
-
 export function WelcomeExperience({
   onRandomIdea,
 }: {
@@ -18,7 +16,7 @@ export function WelcomeExperience({
   const [typed, setTyped] = useState("");
 
   useEffect(() => {
-    const text = "NovelMuse";
+    const text = "InkMuse";
     let index = 0;
     const timer = window.setInterval(() => {
       index += 1;
@@ -78,18 +76,7 @@ export function WelcomeExperience({
             继续创作
           </Button>
         </div>
-        <div className="flex gap-3 overflow-hidden text-xs text-slate-300">
-          {features.map((feature) => (
-            <motion.span
-              key={feature}
-              animate={{ y: [0, -4, 0] }}
-              transition={{ duration: 2.4, repeat: Infinity }}
-              className="rounded-full border border-white/10 bg-white/10 px-3 py-1"
-            >
-              {feature}
-            </motion.span>
-          ))}
-        </div>
+        <div className="text-xs text-slate-300">本地优先保存，无需登录。</div>
       </div>
     </motion.section>
   );

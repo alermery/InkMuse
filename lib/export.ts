@@ -53,5 +53,5 @@ export async function exportNovelZip({
   );
 
   const blob = await zip.generateAsync({ type: "blob" });
-  downloadBlob(`${title || "NovelMuse"}.zip`, blob);
+  downloadBlob(`${title || "InkMuse"}.zip`, blob);
 }

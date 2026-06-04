@@ -11,7 +11,7 @@ export function ExportMenu() {
   const savedEntries = useNovelStore((state) => state.savedEntries);
   const encyclopediaEntries = useNovelStore((state) => state.encyclopediaEntries);
   const addToast = useNovelStore((state) => state.addToast);
-  const title = currentNovel?.title ?? "NovelMuse";
+  const title = currentNovel?.title ?? "InkMuse";
 
   async function copyText() {
     await navigator.clipboard.writeText(stripHtml(chapterDraft));

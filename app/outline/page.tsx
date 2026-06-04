@@ -41,10 +41,10 @@ const initialNodes: OutlineNode[] = [
     children: [
       {
         id: "volume-1",
-        title: "第一卷：失控的开端",
+        title: "第一卷：待命名",
         children: [
-          { id: "chapter-1", title: "第1章：异常委托" },
-          { id: "chapter-2", title: "第2章：第一次反转" },
+          { id: "chapter-1", title: "第1章：待规划" },
+          { id: "chapter-2", title: "第2章：待规划" },
         ],
       },
     ],
@@ -114,9 +114,9 @@ export default function OutlinePage() {
   const addTokenUsage = useNovelStore((state) => state.addTokenUsage);
   const appendToDraft = useNovelStore((state) => state.appendToDraft);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
-  const [concept, setConcept] = useState("一个失败律师在记忆可交易的港城寻找妹妹失踪真相");
-  const [genre, setGenre] = useState("近未来悬疑");
-  const [targetWords, setTargetWords] = useState("120万字");
+  const [concept, setConcept] = useState("");
+  const [genre, setGenre] = useState("");
+  const [targetWords, setTargetWords] = useState("");
   const [nodes, setNodes] = useState(initialNodes);
   const [expanded, setExpanded] = useState(["core", "arc", "volumes", "volume-1"]);
   const [output, setOutput] = useState("");
