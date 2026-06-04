@@ -189,12 +189,12 @@ export function WorkspacePage() {
               <div className="mt-4 h-56 min-h-56 min-w-0">
                 {chartsReady && hasWritingData ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
-                      <XAxis dataKey="day" stroke="#94a3b8" />
-                      <YAxis stroke="#94a3b8" />
-                      <Tooltip />
-                      <Bar dataKey="words" fill="#7c3aed" radius={[6, 6, 0, 0]} />
+                      <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
+                        <XAxis dataKey="day" stroke="#94a3b8" interval={0} />
+                        <YAxis stroke="#94a3b8" />
+                        <Tooltip />
+                        <Bar dataKey="words" fill="#7c3aed" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -209,12 +209,12 @@ export function WorkspacePage() {
               <div className="mt-4 h-56 min-h-56 min-w-0">
                 {chartsReady && hasWritingData ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
-                      <XAxis dataKey="day" stroke="#94a3b8" />
-                      <YAxis stroke="#94a3b8" />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="minutes" stroke="#06b6d4" strokeWidth={3} dot={false} />
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
+                        <XAxis dataKey="day" stroke="#94a3b8" interval={0} />
+                        <YAxis stroke="#94a3b8" />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="minutes" stroke="#06b6d4" strokeWidth={3} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (

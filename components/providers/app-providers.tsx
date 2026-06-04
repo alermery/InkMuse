@@ -4,10 +4,12 @@ import type { ReactNode } from "react";
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useSyncExternalStore,
 } from "react";
 import { ToastProvider } from "@/components/providers/toast-provider";
+import { useNovelStore } from "@/lib/store";
 
 type ThemeMode = "dark" | "light";
 
@@ -24,13 +26,16 @@ const THEME_STORAGE = "inkmuse-theme";
 function subscribeToTheme(callback: () => void) {
   window.addEventListener("storage", callback);
   window.addEventListener("inkmuse-theme", callback);
-  const frame = window.requestAnimationFrame(callback);
 
   return () => {
     window.removeEventListener("storage", callback);
     window.removeEventListener("inkmuse-theme", callback);
-    window.cancelAnimationFrame(frame);
   };
+}
+
+function subscribeToMounted(callback: () => void) {
+  const frame = window.requestAnimationFrame(callback);
+  return () => window.cancelAnimationFrame(frame);
 }
 
 function readStoredTheme(): ThemeMode {
@@ -46,6 +51,14 @@ function readServerTheme(): ThemeMode {
   return "dark";
 }
 
+function readMountedSnapshot() {
+  return true;
+}
+
+function readMountedServerSnapshot() {
+  return false;
+}
+
 function applyTheme(theme: ThemeMode) {
   document.documentElement.classList.toggle("dark", theme === "dark");
   document.documentElement.classList.toggle("light", theme === "light");
@@ -59,7 +72,11 @@ export function AppProviders({ children }: { children: ReactNode }) {
     readServerTheme,
   );
   const theme = storedTheme;
-  const mounted = typeof window !== "undefined";
+  const mounted = useSyncExternalStore(
+    subscribeToMounted,
+    readMountedSnapshot,
+    readMountedServerSnapshot,
+  );
 
   if (mounted) {
     applyTheme(theme);
@@ -86,10 +103,21 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   return (
     <ThemeContext.Provider value={value}>
+      <ClientHydrator />
       {children}
       <ToastProvider />
     </ThemeContext.Provider>
   );
+}
+
+function ClientHydrator() {
+  const hydrateFromStorage = useNovelStore((state) => state.hydrateFromStorage);
+
+  useEffect(() => {
+    queueMicrotask(hydrateFromStorage);
+  }, [hydrateFromStorage]);
+
+  return null;
 }
 
 export function useInkMuseTheme() {

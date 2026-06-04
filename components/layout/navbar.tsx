@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Command,
   Download,
@@ -38,6 +39,47 @@ export function Navbar() {
   const setApiBalance = useNovelStore((state) => state.setApiBalance);
   const toggleSidebar = useNovelStore((state) => state.toggleSidebar);
   const setCommandOpen = useNovelStore((state) => state.setCommandOpen);
+  const addToast = useNovelStore((state) => state.addToast);
+  const [isCheckingBalance, setIsCheckingBalance] = useState(false);
+
+  async function handleBalanceQuery() {
+    if (isCheckingBalance) {
+      return;
+    }
+
+    setIsCheckingBalance(true);
+    setApiBalance("查询中...");
+
+    try {
+      const response = await fetch("/api/deepseek/balance", {
+        method: "GET",
+        headers: apiKey
+          ? {
+              "x-deepseek-api-key": apiKey,
+            }
+          : undefined,
+        cache: "no-store",
+      });
+
+      const payload = (await response.json()) as {
+        display?: string;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "余额查询失败");
+      }
+
+      setApiBalance(payload.display ?? "未知");
+      addToast({ title: "余额已更新", type: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "余额查询失败";
+      setApiBalance(message);
+      addToast({ title: "余额查询失败", description: message, type: "error" });
+    } finally {
+      setIsCheckingBalance(false);
+    }
+  }
 
   return (
     <header className="px-4 pt-4 lg:px-5">
@@ -78,7 +120,9 @@ export function Navbar() {
             className="rounded-xl border border-white/10 bg-white/5 transition hover:-translate-y-0.5 hover:bg-white/10 hover:shadow-[0_0_24px_rgba(6,182,212,0.16)]"
             onClick={toggleTheme}
           >
-            {mounted && theme === "dark" ? (
+            {!mounted ? (
+              <MoonStar className="h-4 w-4" />
+            ) : theme === "dark" ? (
               <SunMedium className="h-4 w-4" />
             ) : (
               <MoonStar className="h-4 w-4" />
@@ -142,9 +186,10 @@ export function Navbar() {
               </div>
               <Button
                 variant="secondary"
-                onClick={() => setApiBalance("余额查询需 DeepSeek 账户接口支持")}
+                onClick={handleBalanceQuery}
+                disabled={isCheckingBalance}
               >
-                查询余额
+                {isCheckingBalance ? "查询中..." : "查询余额"}
               </Button>
             </DialogContent>
           </Dialog>

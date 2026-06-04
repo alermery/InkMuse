@@ -29,6 +29,7 @@ type NovelStore = {
   weeklyGoal: number;
   writingMinutes: number;
   setApiKey: (value: string) => void;
+  hydrateFromStorage: () => void;
   setModel: (value: DeepSeekModel) => void;
   setCurrentNovel: (novel: Novel) => void;
   setChapterDraft: (value: string) => void;
@@ -70,6 +71,21 @@ type PersistedState = Pick<
 >;
 
 const initialDraft = "";
+
+const defaultPersistedState: PersistedState = {
+  chapterDraft: initialDraft,
+  aiCallCount: 0,
+  tokenUsage: 0,
+  apiBalance: "未知",
+  model: "deepseek-chat",
+  sidebarCollapsed: false,
+  welcomeDismissed: true,
+  savedEntries: [],
+  encyclopediaEntries: [],
+  dailyGoal: 3000,
+  weeklyGoal: 18000,
+  writingMinutes: 0,
+};
 
 function loadStoredApiKey() {
   if (typeof window === "undefined") {
@@ -117,20 +133,7 @@ function encryptApiKey(value: string) {
 
 function loadPersistedState(): PersistedState {
   if (typeof window === "undefined") {
-    return {
-      chapterDraft: initialDraft,
-      aiCallCount: 0,
-      tokenUsage: 0,
-      apiBalance: "未知",
-      model: "deepseek-chat",
-      sidebarCollapsed: false,
-      welcomeDismissed: true,
-      savedEntries: [],
-      encyclopediaEntries: [],
-      dailyGoal: 3000,
-      weeklyGoal: 18000,
-      writingMinutes: 86,
-    };
+    return defaultPersistedState;
   }
 
   try {
@@ -153,23 +156,10 @@ function loadPersistedState(): PersistedState {
       encyclopediaEntries: parsed.encyclopediaEntries ?? [],
       dailyGoal: parsed.dailyGoal ?? 3000,
       weeklyGoal: parsed.weeklyGoal ?? 18000,
-      writingMinutes: parsed.writingMinutes ?? 86,
+      writingMinutes: parsed.writingMinutes ?? 0,
     };
   } catch {
-    return {
-      chapterDraft: initialDraft,
-      aiCallCount: 0,
-      tokenUsage: 0,
-      apiBalance: "未知",
-      model: "deepseek-chat",
-      sidebarCollapsed: false,
-      welcomeDismissed: true,
-      savedEntries: [],
-      encyclopediaEntries: [],
-      dailyGoal: 3000,
-      weeklyGoal: 18000,
-      writingMinutes: 86,
-    };
+    return defaultPersistedState;
   }
 }
 
@@ -200,32 +190,48 @@ function createId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-const persisted = loadPersistedState();
-
 export const useNovelStore = create<NovelStore>((set) => ({
-  apiKey: loadStoredApiKey(),
-  model: persisted.model,
+  apiKey: "",
+  model: defaultPersistedState.model,
   currentNovel: defaultNovel,
-  chapterDraft: persisted.chapterDraft,
-  aiCallCount: persisted.aiCallCount,
-  tokenUsage: persisted.tokenUsage,
-  apiBalance: persisted.apiBalance,
-  sidebarCollapsed: persisted.sidebarCollapsed,
+  chapterDraft: defaultPersistedState.chapterDraft,
+  aiCallCount: defaultPersistedState.aiCallCount,
+  tokenUsage: defaultPersistedState.tokenUsage,
+  apiBalance: defaultPersistedState.apiBalance,
+  sidebarCollapsed: defaultPersistedState.sidebarCollapsed,
   commandOpen: false,
   shortcutOpen: false,
-  welcomeDismissed: persisted.welcomeDismissed,
+  welcomeDismissed: defaultPersistedState.welcomeDismissed,
   toasts: [],
-  savedEntries: persisted.savedEntries,
-  encyclopediaEntries: persisted.encyclopediaEntries,
-  dailyGoal: persisted.dailyGoal,
-  weeklyGoal: persisted.weeklyGoal,
-  writingMinutes: persisted.writingMinutes,
+  savedEntries: defaultPersistedState.savedEntries,
+  encyclopediaEntries: defaultPersistedState.encyclopediaEntries,
+  dailyGoal: defaultPersistedState.dailyGoal,
+  weeklyGoal: defaultPersistedState.weeklyGoal,
+  writingMinutes: defaultPersistedState.writingMinutes,
   setApiKey: (value) => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(API_KEY_STORAGE, encryptApiKey(value));
     }
 
     set({ apiKey: value });
+  },
+  hydrateFromStorage: () => {
+    const persisted = loadPersistedState();
+    set({
+      apiKey: loadStoredApiKey(),
+      model: persisted.model,
+      chapterDraft: persisted.chapterDraft,
+      aiCallCount: persisted.aiCallCount,
+      tokenUsage: persisted.tokenUsage,
+      apiBalance: persisted.apiBalance,
+      sidebarCollapsed: persisted.sidebarCollapsed,
+      welcomeDismissed: persisted.welcomeDismissed,
+      savedEntries: persisted.savedEntries,
+      encyclopediaEntries: persisted.encyclopediaEntries,
+      dailyGoal: persisted.dailyGoal,
+      weeklyGoal: persisted.weeklyGoal,
+      writingMinutes: persisted.writingMinutes,
+    });
   },
   setModel: (value) =>
     set((state) => {
