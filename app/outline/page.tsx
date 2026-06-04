@@ -145,7 +145,7 @@ export default function OutlinePage() {
         temperature: 0.8,
         maxTokens: 4000,
         system: "你是长篇小说结构编辑。请根据概念生成完整大纲，包含核心设定、世界观、力量体系、核心冲突、角色线、卷大纲与章节推进。使用清晰 Markdown 层级。",
-        user: `一句话概念：${concept}\n类型：${genre}\n预计字数：${targetWords}\n请生成可直接执行的长篇大纲。`,
+        user: `一句话概念：${concept}\n类型：${genre}\n预计正文总字数：${targetWords}\n请生成可直接执行的长篇大纲，并让卷数、章节数和单章字数规划能匹配预计总字数。`,
         onQueueState: setQueueState,
         onToken: (token) => {
           next += token;
@@ -226,7 +226,7 @@ export default function OutlinePage() {
               添加节点
             </Button>
             <SavedImportPanel
-              sourceFilter={["大纲", "澶х翰"]}
+              sourceFilter={["大纲", "澶х翰", "本地导入"]}
               onImport={(entry) => {
                 setOutput(entry.content);
                 addToast({ title: "已导入收藏，可继续编辑大纲", type: "success" });
@@ -260,6 +260,7 @@ export default function OutlinePage() {
             isLoading={isLoading}
             error={error}
             queueState={queueState}
+            targetWords={targetWords}
             onSave={
               output
                 ? () =>

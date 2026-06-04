@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { TooltipButton } from "@/components/ui/tooltip-button";
 import { cn } from "@/lib/utils";
+import { countChineseWords, getWordCountReview, parseTargetWordCount } from "@/lib/word-count";
 
 export function StreamResultPanel({
   title,
@@ -16,6 +17,7 @@ export function StreamResultPanel({
   onCopy,
   queueState,
   className,
+  targetWords,
 }: {
   title: string;
   content: string;
@@ -25,7 +27,11 @@ export function StreamResultPanel({
   onCopy?: () => void;
   queueState?: string;
   className?: string;
+  targetWords?: string | number | null;
 }) {
+  const actualWords = countChineseWords(content);
+  const review = getWordCountReview(actualWords, parseTargetWordCount(targetWords));
+
   return (
     <section className={cn("glass-panel rounded-lg border p-4", className)}>
       <div className="flex items-center justify-between gap-3">
@@ -34,6 +40,19 @@ export function StreamResultPanel({
           <h2 className="truncate text-sm font-semibold">{title}</h2>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {content ? (
+            <span
+              className={cn(
+                "rounded-full px-2 py-1 text-xs",
+                review.status === "ok" && "bg-emerald-500/12 text-emerald-500",
+                review.status === "low" && "bg-amber-500/12 text-amber-500",
+                review.status === "high" && "bg-rose-500/12 text-rose-500",
+                review.status === "neutral" && "bg-muted text-muted-foreground",
+              )}
+            >
+              {review.label}
+            </span>
+          ) : null}
           {onCopy ? (
             <TooltipButton tooltip="复制结果" size="icon-sm" variant="ghost" onClick={onCopy}>
               <Clipboard className="h-4 w-4" />

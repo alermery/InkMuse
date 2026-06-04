@@ -50,7 +50,7 @@ export default function ContinuationPage() {
         apiKey,
         temperature,
         system: "你是小说续写助手。保持既有文风、人称、剧情逻辑与角色说话方式，推进情节但不偷换设定。支持续写、润色、改写、扩写、缩写和情感注入。",
-        user: `模式：${mode[0]}\n长度：${length[0]}\n创意度：${temperature}\n禁止出现：${banWords}\n风格参考：${styleRef || "无"}\n\n前文：\n${plainText(chapterDraft).slice(-3000)}`,
+        user: `模式：${mode[0]}\n目标长度：${length[0]}，请严格控制在目标字数上下 10% 以内。\n创意度：${temperature}\n禁止出现：${banWords}\n风格参考：${styleRef || "无"}\n\n前文：\n${plainText(chapterDraft).slice(-3000)}`,
         onToken: (token) => {
           next += token;
           setOutput(next);
@@ -114,7 +114,7 @@ export default function ContinuationPage() {
               专注模式
             </Button>
             <SavedImportPanel
-              sourceFilter={["续写", "缁啓"]}
+              sourceFilter={["续写", "缁啓", "本地导入"]}
               onImport={(entry) => {
                 setStyleRef(entry.content);
                 setOutput(entry.content);
@@ -132,6 +132,7 @@ export default function ContinuationPage() {
             content={output}
             isLoading={isLoading}
             error={error}
+            targetWords={length[0]}
             onSave={output ? () => saveEntry(savedEntryFromText("续写", mode[0], output, [mode[0], length[0]])) : undefined}
             onCopy={output ? () => navigator.clipboard.writeText(output) : undefined}
           />

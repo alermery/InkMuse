@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BookMarked, Loader2, Save, Sparkles, Trash2 } from "lucide-react";
+import { BookMarked, FileUp, Loader2, Save, Sparkles, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,7 @@ export default function SavedPage() {
   const apiKey = useNovelStore((state) => state.apiKey);
   const model = useNovelStore((state) => state.model);
   const savedEntries = useNovelStore((state) => state.savedEntries);
+  const saveEntry = useNovelStore((state) => state.saveEntry);
   const updateSavedEntry = useNovelStore((state) => state.updateSavedEntry);
   const removeSavedEntry = useNovelStore((state) => state.removeSavedEntry);
   const addToast = useNovelStore((state) => state.addToast);
@@ -67,6 +68,40 @@ export default function SavedPage() {
       tags: parseTags(activeTags),
     });
     addToast({ title: "收藏已更新", type: "success" });
+  }
+
+  async function importLocalFiles(files: FileList | null) {
+    if (!files?.length) {
+      return;
+    }
+
+    const importedFiles = Array.from(files);
+    await Promise.all(
+      importedFiles.map(async (file) => {
+        const text = await file.text();
+        let title = file.name.replace(/\.(txt|md|markdown|json)$/i, "");
+        let content = text;
+
+        if (file.name.toLowerCase().endsWith(".json")) {
+          try {
+            const parsed = JSON.parse(text) as { title?: string; content?: string; text?: string };
+            title = parsed.title || title;
+            content = parsed.content || parsed.text || JSON.stringify(parsed, null, 2);
+          } catch {
+            content = text;
+          }
+        }
+
+        saveEntry({
+          source: "本地导入",
+          title,
+          content,
+          tags: ["本地导入", file.name.split(".").pop()?.toLowerCase() ?? "text"],
+        });
+      }),
+    );
+
+    addToast({ title: `已导入 ${importedFiles.length} 个本地文件`, type: "success" });
   }
 
   async function reviewCurrent() {
@@ -118,6 +153,20 @@ export default function SavedPage() {
               {savedEntries.length}
             </Badge>
           </div>
+          <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-primary/30 bg-primary/8 px-3 py-2 text-sm text-primary transition hover:bg-primary/12">
+            <FileUp className="h-4 w-4" />
+            导入本地书稿
+            <input
+              type="file"
+              className="sr-only"
+              multiple
+              accept=".txt,.md,.markdown,.json,text/plain,text/markdown,application/json"
+              onChange={(event) => {
+                void importLocalFiles(event.target.files);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
           <ScrollArea className="mt-4 h-[62vh]">
             <div className="space-y-2 pr-3">
               {savedEntries.length === 0 ? (

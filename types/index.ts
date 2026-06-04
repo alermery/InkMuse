@@ -58,7 +58,8 @@ export interface SavedEntry {
     | "世界观"
     | "续写"
     | "对话"
-    | "设定集";
+    | "设定集"
+    | "本地导入";
   tags: string[];
   createdAt: string;
 }
