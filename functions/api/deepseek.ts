@@ -1,13 +1,11 @@
-import { NextResponse } from "next/server";
-
-export const runtime = "edge";
-
 type ChatMessage = {
   role: "system" | "user" | "assistant";
   content: string;
 };
 
-type DeepSeekModel = "deepseek-v4-flash" | "deepseek-v4-pro";
+type Env = {
+  DEEPSEEK_API_KEY?: string;
+};
 
 const rateLimitWindowMs = 60_000;
 const maxRequestsPerWindow = 20;
@@ -15,8 +13,8 @@ const requestBuckets = new Map<string, { count: number; resetAt: number }>();
 
 function getClientKey(request: Request) {
   return (
+    request.headers.get("cf-connecting-ip") ??
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
     request.headers.get("x-deepseek-api-key") ??
     "anonymous"
   );
@@ -39,16 +37,12 @@ function checkRateLimit(key: string) {
   return null;
 }
 
-function normalizeModel(model?: string): DeepSeekModel {
+function normalizeModel(model?: string) {
   return model === "deepseek-v4-pro" ? "deepseek-v4-pro" : "deepseek-v4-flash";
 }
 
 function sse(payload: { content?: string; error?: string } | "[DONE]") {
-  if (payload === "[DONE]") {
-    return "data: [DONE]\n\n";
-  }
-
-  return `data: ${JSON.stringify(payload)}\n\n`;
+  return payload === "[DONE]" ? "data: [DONE]\n\n" : `data: ${JSON.stringify(payload)}\n\n`;
 }
 
 function streamText(content: string, status = 200) {
@@ -72,11 +66,7 @@ function streamText(content: string, status = 200) {
   );
 }
 
-function resolveApiKey(request: Request) {
-  return request.headers.get("x-deepseek-api-key") ?? process.env.DEEPSEEK_API_KEY;
-}
-
-export async function POST(request: Request) {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const retryAfter = checkRateLimit(getClientKey(request));
 
   if (retryAfter) {
@@ -90,17 +80,16 @@ export async function POST(request: Request) {
       temperature?: number;
       maxTokens?: number;
     };
-
     const messages = body.messages ?? [];
 
     if (!messages.length) {
-      return NextResponse.json({ error: "messages 不能为空。" }, { status: 400 });
+      return streamText("messages 不能为空。", 400);
     }
 
-    const apiKey = resolveApiKey(request);
+    const apiKey = request.headers.get("x-deepseek-api-key") ?? env.DEEPSEEK_API_KEY;
 
     if (!apiKey) {
-      return streamText("未检测到 DeepSeek API Key，请先在环境变量或 API Key 设置中配置。", 401);
+      return streamText("未检测到 DeepSeek API Key，请先配置。", 401);
     }
 
     const response = await fetch("https://api.deepseek.com/chat/completions", {
@@ -144,9 +133,7 @@ export async function POST(request: Request) {
           try {
             while (true) {
               const { value, done } = await reader.read();
-              if (done) {
-                break;
-              }
+              if (done) break;
 
               buffer += decoder.decode(value, { stream: true });
               const events = buffer.split("\n\n");
@@ -154,10 +141,7 @@ export async function POST(request: Request) {
 
               for (const event of events) {
                 const line = event.split("\n").find((item) => item.startsWith("data:"));
-
-                if (!line) {
-                  continue;
-                }
+                if (!line) continue;
 
                 const data = line.slice(5).trim();
                 if (data === "[DONE]") {
@@ -173,12 +157,8 @@ export async function POST(request: Request) {
                 const token = parsed.choices?.[0]?.delta?.content ?? "";
                 const message = parsed.error?.message;
 
-                if (message) {
-                  controller.enqueue(encoder.encode(sse({ error: message })));
-                }
-                if (token) {
-                  controller.enqueue(encoder.encode(sse({ content: token })));
-                }
+                if (message) controller.enqueue(encoder.encode(sse({ error: message })));
+                if (token) controller.enqueue(encoder.encode(sse({ content: token })));
               }
             }
 
@@ -187,9 +167,7 @@ export async function POST(request: Request) {
           } catch (error) {
             controller.enqueue(
               encoder.encode(
-                sse({
-                  error: error instanceof Error ? error.message : "DeepSeek 流式响应解析失败。",
-                }),
+                sse({ error: error instanceof Error ? error.message : "DeepSeek 流式响应解析失败。" }),
               ),
             );
             controller.enqueue(encoder.encode(sse("[DONE]")));
@@ -201,14 +179,10 @@ export async function POST(request: Request) {
         headers: {
           "Content-Type": "text/event-stream; charset=utf-8",
           "Cache-Control": "no-store",
-          "X-Accel-Buffering": "no",
         },
       },
     );
   } catch (error) {
-    return streamText(
-      error instanceof Error ? `DeepSeek 请求失败：${error.message}` : "DeepSeek 请求失败，请检查配置。",
-      500,
-    );
+    return streamText(error instanceof Error ? error.message : "DeepSeek 请求失败。", 500);
   }
-}
+};

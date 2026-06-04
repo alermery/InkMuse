@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-
-export const runtime = "edge";
+type Env = {
+  DEEPSEEK_API_KEY?: string;
+};
 
 type DeepSeekBalanceInfo = {
   currency?: string;
@@ -20,19 +20,15 @@ function formatBalanceDisplay(balanceInfos: DeepSeekBalanceInfo[] = []) {
   }
 
   return balanceInfos
-    .map((item) => {
-      const total = item.total_balance ?? "0";
-      const currency = item.currency ?? "CNY";
-      return `${total} ${currency}`;
-    })
+    .map((item) => `${item.total_balance ?? "0"} ${item.currency ?? "CNY"}`)
     .join(" / ");
 }
 
-export async function GET(request: Request) {
-  const apiKey = request.headers.get("x-deepseek-api-key") ?? process.env.DEEPSEEK_API_KEY;
+export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
+  const apiKey = request.headers.get("x-deepseek-api-key") ?? env.DEEPSEEK_API_KEY;
 
   if (!apiKey) {
-    return NextResponse.json({ error: "未检测到 DeepSeek API Key。" }, { status: 401 });
+    return Response.json({ error: "未检测到 DeepSeek API Key。" }, { status: 401 });
   }
 
   try {
@@ -44,7 +40,6 @@ export async function GET(request: Request) {
       },
       cache: "no-store",
     });
-
     const text = await response.text();
     const payload = text
       ? (JSON.parse(text) as DeepSeekBalanceResponse & { error?: { message?: string } })
@@ -52,18 +47,18 @@ export async function GET(request: Request) {
 
     if (!response.ok) {
       const message = payload?.error?.message ?? `DeepSeek 余额查询失败：${response.status}`;
-      return NextResponse.json({ error: message }, { status: response.status });
+      return Response.json({ error: message }, { status: response.status });
     }
 
     const balanceInfos = payload?.balance_infos ?? [];
 
-    return NextResponse.json({
+    return Response.json({
       isAvailable: payload?.is_available ?? false,
       balanceInfos,
       display: formatBalanceDisplay(balanceInfos),
     });
   } catch (error) {
-    return NextResponse.json(
+    return Response.json(
       {
         error:
           error instanceof Error
@@ -73,4 +68,4 @@ export async function GET(request: Request) {
       { status: 500 },
     );
   }
-}
+};

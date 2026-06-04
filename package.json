@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "deploy:cloudflare": "npm run build && npx wrangler pages deploy out",
     "start": "next start",
     "lint": "eslint"
   },
@@ -33,6 +34,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260604.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
