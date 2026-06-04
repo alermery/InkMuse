@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BookMarked,
   BookOpenText,
   Bot,
   Compass,
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/continuation", label: "续写", icon: FileText },
   { href: "/dialogue", label: "对话", icon: MessageCircleMore },
   { href: "/setting", label: "设定集", icon: BookOpenText },
+  { href: "/saved", label: "收藏", icon: BookMarked },
 ] as const;
 
 function SidebarContent() {

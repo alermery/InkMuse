@@ -48,6 +48,7 @@ type NovelStore = {
   addToast: (toast: Omit<ToastMessage, "id">) => void;
   removeToast: (id: string) => void;
   saveEntry: (entry: Omit<SavedEntry, "id" | "createdAt">) => void;
+  updateSavedEntry: (id: string, entry: Pick<SavedEntry, "title" | "content" | "tags">) => void;
   saveSetting: (entry: Omit<EncyclopediaEntry, "id" | "createdAt">) => void;
   removeSavedEntry: (id: string) => void;
   removeSetting: (id: string) => void;
@@ -397,6 +398,24 @@ export const useNovelStore = create<NovelStore>((set) => ({
       const next = {
         ...state,
         savedEntries: [nextEntry, ...state.savedEntries],
+      };
+      persist(next);
+      return { savedEntries: next.savedEntries };
+    }),
+  updateSavedEntry: (id, entry) =>
+    set((state) => {
+      const next = {
+        ...state,
+        savedEntries: state.savedEntries.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                title: entry.title,
+                content: entry.content,
+                tags: entry.tags,
+              }
+            : item,
+        ),
       };
       persist(next);
       return { savedEntries: next.savedEntries };

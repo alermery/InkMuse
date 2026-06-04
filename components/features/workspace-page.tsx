@@ -15,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { BookOpen, CalendarDays, Clock, Flame, Loader2, Save, Sparkles, Target } from "lucide-react";
+import { BookOpen, CalendarDays, Clock, Flame, Loader2, RefreshCw, Save, Sparkles, Target } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { CountUp } from "@/components/features/count-up";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
@@ -52,6 +52,8 @@ const weeklyYAxisProps = {
   tickMargin: 4,
   tick: { fontSize: 12 },
 } as const;
+
+const DAILY_IDEA_SESSION_KEY = "inkmuse:workspace:daily-idea";
 
 function subscribeToClientReady(callback: () => void) {
   const frame = requestAnimationFrame(callback);
@@ -106,7 +108,11 @@ export function WorkspacePage() {
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
   const [daily, setDaily] = useState(String(dailyGoal));
   const [weekly, setWeekly] = useState(String(weeklyGoal));
-  const [recommendation, setRecommendation] = useState("");
+  const [recommendation, setRecommendation] = useState(() =>
+    typeof window === "undefined"
+      ? ""
+      : window.sessionStorage.getItem(DAILY_IDEA_SESSION_KEY) ?? "",
+  );
   const [queueState, setQueueState] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -151,6 +157,9 @@ export function WorkspacePage() {
     if (!force && (recommendation || isLoading)) {
       return;
     }
+    if (force) {
+      window.sessionStorage.removeItem(DAILY_IDEA_SESSION_KEY);
+    }
     setRecommendation("");
     setIsLoading(true);
     setError(null);
@@ -172,6 +181,9 @@ export function WorkspacePage() {
           setRecommendation(next);
         },
       });
+      if (next) {
+        window.sessionStorage.setItem(DAILY_IDEA_SESSION_KEY, next);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "每日灵感生成失败");
     } finally {
@@ -185,6 +197,10 @@ export function WorkspacePage() {
     }
 
     autoStarted.current = true;
+    if (window.sessionStorage.getItem(DAILY_IDEA_SESSION_KEY)) {
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       void generateDailyIdea();
     }, 0);
@@ -389,6 +405,15 @@ export function WorkspacePage() {
                 : undefined
             }
           />
+          <Button
+            className="w-full"
+            variant="secondary"
+            onClick={() => generateDailyIdea(true)}
+            disabled={isLoading}
+          >
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            换一条每日灵感
+          </Button>
           {isLoading ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
