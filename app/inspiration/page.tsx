@@ -15,6 +15,7 @@ import { TooltipButton } from "@/components/ui/tooltip-button";
 import { Input } from "@/components/ui/input";
 import { OptionChips } from "@/components/features/option-chips";
 import { ModuleFormShell } from "@/components/features/module-form-shell";
+import { SavedImportPanel } from "@/components/features/saved-import-panel";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { parseJsonArray, savedEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
 import { useNovelStore } from "@/lib/store";
@@ -195,6 +196,13 @@ export default function InspirationPage() {
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               生成灵感
             </Button>
+            <SavedImportPanel
+              sourceFilter={["灵感坊", "鐏垫劅鍧?", "工作台", "宸ヤ綔鍙?"]}
+              onImport={(entry) => {
+                setExpanded(entry.content);
+                addToast({ title: "已导入收藏，可在扩展区继续修改", type: "success" });
+              }}
+            />
           </div>
         </section>
       }

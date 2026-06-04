@@ -5,6 +5,7 @@ import { EyeOff, Loader2, Plus, Wand2 } from "lucide-react";
 import { NovelEditor } from "@/components/editor/novel-editor";
 import { ModuleFormShell } from "@/components/features/module-form-shell";
 import { OptionChips } from "@/components/features/option-chips";
+import { SavedImportPanel } from "@/components/features/saved-import-panel";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ export default function ContinuationPage() {
   const chapterDraft = useNovelStore((state) => state.chapterDraft);
   const appendToDraft = useNovelStore((state) => state.appendToDraft);
   const saveEntry = useNovelStore((state) => state.saveEntry);
+  const addToast = useNovelStore((state) => state.addToast);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
   const [mode, setMode] = usePersistedState("inkmuse:continuation:mode", ["续写模式"]);
   const [length, setLength] = usePersistedState("inkmuse:continuation:length", ["500字"]);
@@ -111,6 +113,14 @@ export default function ContinuationPage() {
               <EyeOff className="h-4 w-4" />
               专注模式
             </Button>
+            <SavedImportPanel
+              sourceFilter={["续写", "缁啓"]}
+              onImport={(entry) => {
+                setStyleRef(entry.content);
+                setOutput(entry.content);
+                addToast({ title: "已导入续写收藏，可继续改写", type: "success" });
+              }}
+            />
           </div>
         </section>
       }

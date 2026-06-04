@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { BookMarked, Loader2, Search, Trash2, Wand2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { OptionChips } from "@/components/features/option-chips";
+import { SavedImportPanel } from "@/components/features/saved-import-panel";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export default function SettingPage() {
   const entries = useNovelStore((state) => state.encyclopediaEntries);
   const saveSetting = useNovelStore((state) => state.saveSetting);
   const removeSetting = useNovelStore((state) => state.removeSetting);
+  const addToast = useNovelStore((state) => state.addToast);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
   const [query, setQuery] = usePersistedState("inkmuse:setting:query", "");
   const [category, setCategory] = usePersistedState<string[]>("inkmuse:setting:category", ["世界观"]);
@@ -88,6 +90,14 @@ export default function SettingPage() {
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
               AI 自动提取
             </Button>
+            <SavedImportPanel
+              sourceFilter={["设定集", "璁惧畾闆?", "角色", "瑙掕壊", "世界观", "涓栫晫瑙?"]}
+              onImport={(entry) => {
+                setSourceText(entry.content);
+                setOutput(entry.content);
+                addToast({ title: "已导入收藏，可提取或保存为设定", type: "success" });
+              }}
+            />
           </div>
         </section>
         <div className="space-y-5">

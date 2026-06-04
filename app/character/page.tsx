@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, MessageCircle, UserRound, Wand2 } from "lucide-react";
 import { ModuleFormShell } from "@/components/features/module-form-shell";
 import { OptionChips } from "@/components/features/option-chips";
+import { SavedImportPanel } from "@/components/features/saved-import-panel";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ export default function CharacterPage() {
   const apiKey = useNovelStore((state) => state.apiKey);
   const saveEntry = useNovelStore((state) => state.saveEntry);
   const saveSetting = useNovelStore((state) => state.saveSetting);
+  const addToast = useNovelStore((state) => state.addToast);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
   const [name, setName] = usePersistedState("inkmuse:character:name", "");
   const [age, setAge] = usePersistedState("inkmuse:character:age", "");
@@ -118,6 +120,14 @@ export default function CharacterPage() {
             >
               AI 性格标签
             </Button>
+            <SavedImportPanel
+              sourceFilter={["角色", "瑙掕壊"]}
+              onImport={(entry) => {
+                setName(entry.title.replace(/\s*角色档案$/, ""));
+                setProfile(entry.content);
+                addToast({ title: "已导入角色收藏，可继续修改", type: "success" });
+              }}
+            />
           </div>
         </section>
       }

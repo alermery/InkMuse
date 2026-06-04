@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, GripVertical, Loader2, Plus, Wand2 } from "lucide-react";
 import { ModuleFormShell } from "@/components/features/module-form-shell";
+import { SavedImportPanel } from "@/components/features/saved-import-panel";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { Button } from "@/components/ui/button";
 import { TooltipButton } from "@/components/ui/tooltip-button";
@@ -224,6 +225,13 @@ export default function OutlinePage() {
               <Plus className="h-4 w-4" />
               添加节点
             </Button>
+            <SavedImportPanel
+              sourceFilter={["大纲", "澶х翰"]}
+              onImport={(entry) => {
+                setOutput(entry.content);
+                addToast({ title: "已导入收藏，可继续编辑大纲", type: "success" });
+              }}
+            />
           </div>
         </section>
       }

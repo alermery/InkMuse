@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, MessagesSquare, Plus } from "lucide-react";
 import { ModuleFormShell } from "@/components/features/module-form-shell";
 import { OptionChips } from "@/components/features/option-chips";
+import { SavedImportPanel } from "@/components/features/saved-import-panel";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +19,7 @@ export default function DialoguePage() {
   const apiKey = useNovelStore((state) => state.apiKey);
   const saveEntry = useNovelStore((state) => state.saveEntry);
   const appendToDraft = useNovelStore((state) => state.appendToDraft);
+  const addToast = useNovelStore((state) => state.addToast);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
   const [characters, setCharacters] = usePersistedState<string[]>("inkmuse:dialogue:characters", []);
   const [scene, setScene] = usePersistedState("inkmuse:dialogue:scene", "");
@@ -83,6 +85,14 @@ export default function DialoguePage() {
               <Plus className="h-4 w-4" />
               插入当前章节
             </Button>
+            <SavedImportPanel
+              sourceFilter={["对话", "瀵硅瘽"]}
+              onImport={(entry) => {
+                setScene(entry.content);
+                setOutput(entry.content);
+                addToast({ title: "已导入对话收藏，可继续调整", type: "success" });
+              }}
+            />
           </div>
         </section>
       }

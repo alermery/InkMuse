@@ -20,6 +20,14 @@ function parseTags(value: string) {
     .filter(Boolean);
 }
 
+function groupBySource(entries: ReturnType<typeof useNovelStore.getState>["savedEntries"]) {
+  return entries.reduce<Record<string, typeof entries>>((groups, entry) => {
+    groups[entry.source] ??= [];
+    groups[entry.source].push(entry);
+    return groups;
+  }, {});
+}
+
 export default function SavedPage() {
   const apiKey = useNovelStore((state) => state.apiKey);
   const model = useNovelStore((state) => state.model);
@@ -37,6 +45,8 @@ export default function SavedPage() {
   const [queueState, setQueueState] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isReviewing, setIsReviewing] = useState(false);
+  const groupedEntries = useMemo(() => groupBySource(savedEntries), [savedEntries]);
+  const sourceNames = useMemo(() => Object.keys(groupedEntries), [groupedEntries]);
 
   const selectedEntry = useMemo(
     () => savedEntries.find((entry) => entry.id === selectedId) ?? savedEntries[0],
@@ -115,34 +125,41 @@ export default function SavedPage() {
                   暂无收藏。你可以在工作台每日灵感、灵感坊、大纲、角色、世界观、续写或对话页面保存生成结果。
                 </p>
               ) : null}
-              {savedEntries.map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedId(entry.id);
-                    setTitle(entry.title);
-                    setContent(entry.content);
-                    setTags(entry.tags.join("，"));
-                    setReview("");
-                    setError(null);
-                  }}
-                  className={`w-full rounded-lg border p-3 text-left transition hover:border-primary/35 hover:bg-primary/8 ${
-                    selectedEntry?.id === entry.id
-                      ? "border-primary/45 bg-primary/10"
-                      : "border-white/10 bg-black/10"
-                  }`}
-                >
+              {sourceNames.map((source) => (
+                <div key={source} className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="shrink-0 rounded-full">
-                      {entry.source}
-                    </Badge>
-                    <span className="min-w-0 truncate text-sm font-medium">{entry.title}</span>
+                    <Badge className="rounded-full">{source}</Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {groupedEntries[source].length} 条
+                    </span>
                   </div>
-                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                    {entry.content}
-                  </p>
-                </button>
+                  {groupedEntries[source].map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedId(entry.id);
+                        setTitle(entry.title);
+                        setContent(entry.content);
+                        setTags(entry.tags.join("，"));
+                        setReview("");
+                        setError(null);
+                      }}
+                      className={`w-full rounded-lg border p-3 text-left transition hover:border-primary/35 hover:bg-primary/8 ${
+                        selectedEntry?.id === entry.id
+                          ? "border-primary/45 bg-primary/10"
+                          : "border-white/10 bg-black/10"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="min-w-0 truncate text-sm font-medium">{entry.title}</span>
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                        {entry.content}
+                      </p>
+                    </button>
+                  ))}
+                </div>
               ))}
             </div>
           </ScrollArea>

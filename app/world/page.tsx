@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, ShieldCheck, Wand2 } from "lucide-react";
 import { ModuleFormShell } from "@/components/features/module-form-shell";
 import { OptionChips } from "@/components/features/option-chips";
+import { SavedImportPanel } from "@/components/features/saved-import-panel";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +19,7 @@ export default function WorldPage() {
   const apiKey = useNovelStore((state) => state.apiKey);
   const saveEntry = useNovelStore((state) => state.saveEntry);
   const saveSetting = useNovelStore((state) => state.saveSetting);
+  const addToast = useNovelStore((state) => state.addToast);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
   const [category, setCategory] = usePersistedState("inkmuse:world:category", ["力量体系"]);
   const [action, setAction] = usePersistedState("inkmuse:world:action", ["自动补全关联设定"]);
@@ -70,6 +72,14 @@ export default function WorldPage() {
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
               执行
             </Button>
+            <SavedImportPanel
+              sourceFilter={["世界观", "涓栫晫瑙?"]}
+              onImport={(entry) => {
+                setSetting(entry.content);
+                setOutput(entry.content);
+                addToast({ title: "已导入世界观收藏，可继续推演", type: "success" });
+              }}
+            />
           </div>
         </section>
       }
