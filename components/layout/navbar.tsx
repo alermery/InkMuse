@@ -14,6 +14,7 @@ import {
 import { ExportMenu } from "@/components/features/export-menu";
 import { useInkMuseTheme } from "@/components/providers/app-providers";
 import { Button } from "@/components/ui/button";
+import { TooltipButton } from "@/components/ui/tooltip-button";
 import {
   Dialog,
   DialogContent,
@@ -90,14 +91,15 @@ export function Navbar() {
     <header className="px-4 pt-4 lg:px-5">
       <div className="glass-panel glow-ring mx-auto flex h-16 items-center justify-between rounded-2xl border px-4">
         <div className="flex items-center gap-3">
-          <Button
+          <TooltipButton
+            tooltip="折叠侧边栏"
             size="icon"
             variant="ghost"
             className="hidden rounded-xl lg:inline-flex"
             onClick={toggleSidebar}
           >
             <Menu className="h-4 w-4" />
-          </Button>
+          </TooltipButton>
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/18 text-primary shadow-[0_0_24px_rgba(124,58,237,0.2)]">
             <PenTool className="h-5 w-5" />
           </div>
@@ -111,15 +113,17 @@ export function Navbar() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
+          <TooltipButton
+            tooltip="打开快捷命令"
             variant="ghost"
             size="icon"
             className="rounded-xl border border-white/10 bg-white/5"
             onClick={() => setCommandOpen(true)}
           >
             <Command className="h-4 w-4" />
-          </Button>
-          <Button
+          </TooltipButton>
+          <TooltipButton
+            tooltip="切换明暗主题"
             variant="ghost"
             size="icon"
             className="rounded-xl border border-white/10 bg-white/5 transition hover:-translate-y-0.5 hover:bg-white/10 hover:shadow-[0_0_24px_rgba(6,182,212,0.16)]"
@@ -132,7 +136,7 @@ export function Navbar() {
             ) : (
               <MoonStar className="h-4 w-4" />
             )}
-          </Button>
+          </TooltipButton>
           <Dialog>
             <DialogTrigger
               render={

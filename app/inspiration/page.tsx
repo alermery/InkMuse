@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TooltipButton } from "@/components/ui/tooltip-button";
 import { Input } from "@/components/ui/input";
 import { OptionChips } from "@/components/features/option-chips";
 import { ModuleFormShell } from "@/components/features/module-form-shell";
@@ -228,33 +229,35 @@ export default function InspirationPage() {
                     ))}
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <Button
+                    <TooltipButton
+                      tooltip={favoriteIds.has(idea.title) ? "取消收藏" : "收藏灵感"}
                       size="icon-sm"
                       variant={favoriteIds.has(idea.title) ? "default" : "ghost"}
                       onClick={() => toggleFavorite(idea)}
                     >
                       <Star className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon-sm" variant="ghost" onClick={() => expandIdea(idea)}>
+                    </TooltipButton>
+                    <TooltipButton tooltip="扩展灵感" size="icon-sm" variant="ghost" onClick={() => expandIdea(idea)}>
                       {expandingTitle === idea.title ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <RefreshCw className="h-4 w-4" />
                       )}
-                    </Button>
-                    <Button size="icon-sm" variant="ghost" onClick={() => navigator.clipboard.writeText(idea.description)}>
+                    </TooltipButton>
+                    <TooltipButton tooltip="复制描述" size="icon-sm" variant="ghost" onClick={() => navigator.clipboard.writeText(idea.description)}>
                       <Clipboard className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon-sm" variant="ghost" onClick={() => saveIdea(idea)}>
+                    </TooltipButton>
+                    <TooltipButton tooltip="保存到收藏" size="icon-sm" variant="ghost" onClick={() => saveIdea(idea)}>
                       <Save className="h-4 w-4" />
-                    </Button>
-                    <Button
+                    </TooltipButton>
+                    <TooltipButton
+                      tooltip="删除卡片"
                       size="icon-sm"
                       variant="ghost"
                       onClick={() => setIdeas((value) => value.filter((item) => item.title !== idea.title))}
                     >
                       <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </TooltipButton>
                   </div>
                 </div>
               </article>

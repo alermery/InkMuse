@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { TooltipButton } from "@/components/ui/tooltip-button";
 import { streamDeepSeek } from "@/lib/ai-stream";
 import { useNovelStore } from "@/lib/store";
 
@@ -165,7 +166,8 @@ export default function SavedPage() {
                   <Save className="h-4 w-4" />
                   保存修改
                 </Button>
-                <Button
+                <TooltipButton
+                  tooltip="删除收藏"
                   size="icon-sm"
                   variant="ghost"
                   disabled={!selectedEntry}
@@ -179,7 +181,7 @@ export default function SavedPage() {
                   }}
                 >
                   <Trash2 className="h-4 w-4" />
-                </Button>
+                </TooltipButton>
               </div>
             </div>
             <div className="mt-4 grid gap-4">

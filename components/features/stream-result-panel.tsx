@@ -4,6 +4,7 @@ import { AlertCircle, Clipboard, Loader2, Save, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
+import { TooltipButton } from "@/components/ui/tooltip-button";
 import { cn } from "@/lib/utils";
 
 export function StreamResultPanel({
@@ -34,9 +35,9 @@ export function StreamResultPanel({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {onCopy ? (
-            <Button size="icon-sm" variant="ghost" onClick={onCopy}>
+            <TooltipButton tooltip="复制结果" size="icon-sm" variant="ghost" onClick={onCopy}>
               <Clipboard className="h-4 w-4" />
-            </Button>
+            </TooltipButton>
           ) : null}
           {onSave ? (
             <Button size="sm" variant="secondary" onClick={onSave}>

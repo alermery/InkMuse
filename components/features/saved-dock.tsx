@@ -2,8 +2,8 @@
 
 import { BookMarked, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { TooltipButton } from "@/components/ui/tooltip-button";
 import { useNovelStore } from "@/lib/store";
 
 export function SavedDock() {
@@ -41,13 +41,14 @@ export function SavedDock() {
                     {entry.content}
                   </p>
                 </div>
-                <Button
+                <TooltipButton
+                  tooltip="删除收藏"
                   size="icon-xs"
                   variant="ghost"
                   onClick={() => removeSavedEntry(entry.id)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                </TooltipButton>
               </div>
             </div>
           ))}

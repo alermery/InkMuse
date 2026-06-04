@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, GripVertical, Loader2, Plus, Wand2 } from "l
 import { ModuleFormShell } from "@/components/features/module-form-shell";
 import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { Button } from "@/components/ui/button";
+import { TooltipButton } from "@/components/ui/tooltip-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { savedEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
@@ -76,9 +77,9 @@ function OutlineBranch({
     <div className="rounded-lg border border-white/10 bg-black/10 p-2">
       <div className="flex items-center gap-2">
         <GripVertical className="h-4 w-4 text-foreground/35" />
-        <Button size="icon-xs" variant="ghost" onClick={() => onToggle(node.id)}>
+        <TooltipButton tooltip={isExpanded ? "收起节点" : "展开节点"} size="icon-xs" variant="ghost" onClick={() => onToggle(node.id)}>
           {hasChildren && isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </Button>
+        </TooltipButton>
         <p className="min-w-0 flex-1 truncate text-sm font-medium">{node.title}</p>
         <Button size="sm" variant="ghost" onClick={() => onAction(node, "扩展此章节")}>
           扩展
