@@ -62,8 +62,8 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
             size="icon"
             variant="ghost"
             className={cn(
-              "rounded-xl border border-transparent bg-transparent transition hover:-translate-y-0.5 hover:bg-white/10 hover:shadow-[0_0_18px_rgba(96,165,250,0.14)]",
-              isActive && "border-white/10 bg-white/10 text-primary",
+              "rounded-xl border border-transparent bg-transparent text-foreground transition hover:-translate-y-0.5 hover:bg-muted hover:text-foreground hover:shadow-[0_0_18px_rgba(96,165,250,0.14)]",
+              isActive && "border-primary/20 bg-primary/10 text-primary hover:text-primary",
             )}
             onClick={() => item.action(editor)}
           >

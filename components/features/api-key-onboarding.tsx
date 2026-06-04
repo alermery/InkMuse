@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { useNovelStore } from "@/lib/store";
 
 export function ApiKeyOnboarding() {
@@ -18,12 +19,16 @@ export function ApiKeyOnboarding() {
   const setApiKey = useNovelStore((state) => state.setApiKey);
   const addToast = useNovelStore((state) => state.addToast);
   const [draft, setDraft] = useState(apiKey);
+  const [rememberDevice, setRememberDevice] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const open = !apiKey && !dismissed;
 
   function save() {
-    setApiKey(draft);
-    addToast({ title: "API Key 已保存", type: "success" });
+    setApiKey(draft, rememberDevice);
+    addToast({
+      title: rememberDevice ? "API Key 已保存到此设备" : "API Key 已用于当前会话",
+      type: "success",
+    });
   }
 
   return (
@@ -35,7 +40,7 @@ export function ApiKeyOnboarding() {
             设置 DeepSeek API Key
           </DialogTitle>
           <DialogDescription>
-            Key 会加密后保存在当前浏览器 LocalStorage，用于本地代理调用。
+            默认仅在当前页面会话中保存，用于调用 DeepSeek 代理接口。
           </DialogDescription>
         </DialogHeader>
         <Input
@@ -45,6 +50,19 @@ export function ApiKeyOnboarding() {
           placeholder="sk-..."
           className="border-white/10 bg-black/10"
         />
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-black/10 p-3">
+          <div>
+            <p className="text-sm font-medium">记住此设备</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              开启后会写入当前浏览器 LocalStorage；公共设备不建议开启。
+            </p>
+          </div>
+          <Switch
+            checked={rememberDevice}
+            onCheckedChange={setRememberDevice}
+            aria-label="记住此设备"
+          />
+        </div>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setDismissed(true)}>
             稍后

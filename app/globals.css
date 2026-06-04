@@ -53,37 +53,37 @@
   --font-inter: "Inter", "Segoe UI", sans-serif;
   --font-noto-serif-sc: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
   --font-jetbrains: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
-  --background: #faf5ff;
-  --foreground: #1e1b4b;
+  --background: #f8fafc;
+  --foreground: #172033;
   --card: #ffffff;
-  --card-foreground: #1e1b4b;
+  --card-foreground: #172033;
   --popover: #ffffff;
-  --popover-foreground: #1e1b4b;
-  --primary: #7c3aed;
+  --popover-foreground: #172033;
+  --primary: #6d5dfc;
   --primary-foreground: #ffffff;
-  --secondary: #f3e8ff;
-  --secondary-foreground: #3b0764;
-  --muted: #f8fafc;
-  --muted-foreground: #64748b;
+  --secondary: #e8eef8;
+  --secondary-foreground: #24324a;
+  --muted: #eef3f8;
+  --muted-foreground: #526070;
   --accent: #0891b2;
-  --accent-foreground: #ffffff;
+  --accent-foreground: #f8fafc;
   --destructive: #dc2626;
-  --border: rgba(124, 58, 237, 0.14);
-  --input: rgba(255, 255, 255, 0.78);
-  --ring: #7c3aed;
-  --chart-1: #7c3aed;
+  --border: rgba(42, 56, 83, 0.14);
+  --input: rgba(255, 255, 255, 0.84);
+  --ring: #6d5dfc;
+  --chart-1: #6d5dfc;
   --chart-2: #0891b2;
   --chart-3: #10b981;
   --chart-4: #f59e0b;
   --chart-5: #ef4444;
-  --sidebar: rgba(255, 255, 255, 0.78);
-  --sidebar-foreground: #312e81;
-  --sidebar-primary: #7c3aed;
+  --sidebar: rgba(255, 255, 255, 0.82);
+  --sidebar-foreground: #24324a;
+  --sidebar-primary: #6d5dfc;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(124, 58, 237, 0.08);
-  --sidebar-accent-foreground: #3b0764;
-  --sidebar-border: rgba(124, 58, 237, 0.14);
-  --sidebar-ring: #7c3aed;
+  --sidebar-accent: rgba(109, 93, 252, 0.1);
+  --sidebar-accent-foreground: #172033;
+  --sidebar-border: rgba(42, 56, 83, 0.14);
+  --sidebar-ring: #6d5dfc;
 }
 
 .dark {
@@ -137,7 +137,9 @@
   body {
     @apply bg-background text-foreground font-sans;
     background:
-      linear-gradient(135deg, rgba(250, 245, 255, 0.96), rgba(255, 255, 255, 0.92));
+      radial-gradient(circle at 12% 8%, rgba(109, 93, 252, 0.12), transparent 28%),
+      radial-gradient(circle at 84% 18%, rgba(8, 145, 178, 0.12), transparent 24%),
+      linear-gradient(135deg, #f8fafc 0%, #edf4f8 52%, #f7f5ff 100%);
     background-attachment: fixed;
   }
 
@@ -178,7 +180,8 @@
 @layer utilities {
   .glass-card,
   .glass-panel {
-    background: rgba(255, 255, 255, 0.05);
+    color: var(--foreground);
+    background: rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 16px;
@@ -189,9 +192,41 @@
   .light .glass-panel,
   :root:not(.dark) .glass-card,
   :root:not(.dark) .glass-panel {
-    background: rgba(255, 255, 255, 0.72);
-    border-color: rgba(124, 58, 237, 0.14);
-    box-shadow: 0 16px 40px rgba(76, 29, 149, 0.08);
+    background: rgba(255, 255, 255, 0.78);
+    border-color: rgba(42, 56, 83, 0.14);
+    box-shadow: 0 18px 48px rgba(42, 56, 83, 0.1);
+  }
+
+  .light .bg-black\/10,
+  :root:not(.dark) .bg-black\/10 {
+    background-color: rgba(255, 255, 255, 0.62);
+  }
+
+  .light .bg-black\/15,
+  :root:not(.dark) .bg-black\/15,
+  .light .bg-black\/20,
+  :root:not(.dark) .bg-black\/20 {
+    background-color: rgba(241, 245, 249, 0.76);
+  }
+
+  .light .bg-white\/5,
+  :root:not(.dark) .bg-white\/5,
+  .light .bg-white\/6,
+  :root:not(.dark) .bg-white\/6,
+  .light .bg-white\/7,
+  :root:not(.dark) .bg-white\/7,
+  .light .bg-white\/8,
+  :root:not(.dark) .bg-white\/8,
+  .light .bg-white\/10,
+  :root:not(.dark) .bg-white\/10,
+  .light .bg-white\/12,
+  :root:not(.dark) .bg-white\/12 {
+    background-color: rgba(255, 255, 255, 0.7);
+  }
+
+  .light .border-white\/10,
+  :root:not(.dark) .border-white\/10 {
+    border-color: rgba(42, 56, 83, 0.14);
   }
 
   .surface-gradient {
@@ -199,7 +234,7 @@
   }
 
   .hover-lift {
-    @apply transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-[0_18px_54px_rgba(124,58,237,0.24)];
+    @apply transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:text-foreground hover:shadow-[0_18px_54px_rgba(42,56,83,0.16)];
   }
 
   .glow-ring {

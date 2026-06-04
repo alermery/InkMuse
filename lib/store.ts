@@ -12,6 +12,7 @@ import type {
 
 type NovelStore = {
   apiKey: string;
+  apiKeyPersisted: boolean;
   model: DeepSeekModel;
   currentNovel: Novel | null;
   chapterDraft: string;
@@ -28,7 +29,9 @@ type NovelStore = {
   dailyGoal: number;
   weeklyGoal: number;
   writingMinutes: number;
-  setApiKey: (value: string) => void;
+  setApiKey: (value: string, persistKey?: boolean) => void;
+  setApiKeyPersisted: (value: boolean) => void;
+  clearApiKey: () => void;
   hydrateFromStorage: () => void;
   setModel: (value: DeepSeekModel) => void;
   setCurrentNovel: (novel: Novel) => void;
@@ -51,6 +54,7 @@ type NovelStore = {
 };
 
 const API_KEY_STORAGE = "novelmuse-api-key";
+const API_KEY_PERSISTENCE_STORAGE = "novelmuse-api-key-persistence";
 const STATE_STORAGE = "novelmuse-state";
 const API_KEY_MASK = "novelmuse-local-key";
 
@@ -92,6 +96,11 @@ function loadStoredApiKey() {
     return "";
   }
 
+  if (window.localStorage.getItem(API_KEY_PERSISTENCE_STORAGE) !== "true") {
+    window.localStorage.removeItem(API_KEY_STORAGE);
+    return "";
+  }
+
   const encrypted = window.localStorage.getItem(API_KEY_STORAGE);
   if (!encrypted) {
     return "";
@@ -129,6 +138,29 @@ function encryptApiKey(value: string) {
     .join("");
 
   return window.btoa(unescape(encodeURIComponent(masked)));
+}
+
+function loadApiKeyPersistence() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.localStorage.getItem(API_KEY_PERSISTENCE_STORAGE) === "true";
+}
+
+function persistApiKey(value: string, shouldPersist: boolean) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (!value.trim() || !shouldPersist) {
+    window.localStorage.removeItem(API_KEY_STORAGE);
+    window.localStorage.setItem(API_KEY_PERSISTENCE_STORAGE, "false");
+    return;
+  }
+
+  window.localStorage.setItem(API_KEY_STORAGE, encryptApiKey(value));
+  window.localStorage.setItem(API_KEY_PERSISTENCE_STORAGE, "true");
 }
 
 function loadPersistedState(): PersistedState {
@@ -192,6 +224,7 @@ function createId(prefix: string) {
 
 export const useNovelStore = create<NovelStore>((set) => ({
   apiKey: "",
+  apiKeyPersisted: false,
   model: defaultPersistedState.model,
   currentNovel: defaultNovel,
   chapterDraft: defaultPersistedState.chapterDraft,
@@ -208,17 +241,26 @@ export const useNovelStore = create<NovelStore>((set) => ({
   dailyGoal: defaultPersistedState.dailyGoal,
   weeklyGoal: defaultPersistedState.weeklyGoal,
   writingMinutes: defaultPersistedState.writingMinutes,
-  setApiKey: (value) => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(API_KEY_STORAGE, encryptApiKey(value));
-    }
-
-    set({ apiKey: value });
+  setApiKey: (value, persistKey = false) => {
+    persistApiKey(value, persistKey);
+    set({ apiKey: value, apiKeyPersisted: persistKey && Boolean(value.trim()) });
+  },
+  setApiKeyPersisted: (value) => {
+    set((state) => {
+      persistApiKey(state.apiKey, value);
+      return { apiKeyPersisted: value && Boolean(state.apiKey.trim()) };
+    });
+  },
+  clearApiKey: () => {
+    persistApiKey("", false);
+    set({ apiKey: "", apiKeyPersisted: false, apiBalance: "未知" });
   },
   hydrateFromStorage: () => {
     const persisted = loadPersistedState();
+    const apiKeyPersisted = loadApiKeyPersistence();
     set({
-      apiKey: loadStoredApiKey(),
+      apiKey: apiKeyPersisted ? loadStoredApiKey() : "",
+      apiKeyPersisted,
       model: persisted.model,
       chapterDraft: persisted.chapterDraft,
       aiCallCount: persisted.aiCallCount,

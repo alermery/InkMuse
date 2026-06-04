@@ -54,18 +54,18 @@ function SidebarContent() {
               className={cn(
                 "group relative overflow-hidden rounded-xl px-3 py-3 text-sm transition",
                 isActive
-                  ? "bg-white/12 text-white"
-                  : "text-foreground/70 hover:-translate-y-0.5 hover:bg-white/7 hover:text-white",
+                  ? "bg-primary/14 text-foreground"
+                  : "text-foreground/72 hover:-translate-y-0.5 hover:bg-primary/10 hover:text-foreground",
               )}
             >
               {isActive ? (
                 <motion.span
                   layoutId="active-nav"
-                  className="absolute inset-0 rounded-xl border border-white/10 bg-linear-to-r from-violet-500/18 via-cyan-500/10 to-transparent"
+                  className="absolute inset-0 rounded-xl border border-primary/20 bg-linear-to-r from-primary/18 via-cyan-500/10 to-transparent"
                 />
               ) : null}
               <span className="relative flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/20 text-primary transition group-hover:shadow-[0_0_20px_rgba(139,92,246,0.22)]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/20 text-primary transition group-hover:bg-primary/12 group-hover:shadow-[0_0_20px_rgba(109,93,252,0.2)]">
                   <Icon className="h-4 w-4" />
                 </span>
                 <span className={cn(collapsed && "sr-only")}>{item.label}</span>
@@ -74,7 +74,7 @@ function SidebarContent() {
           );
         })}
       </nav>
-      <div className={cn("rounded-xl border border-white/10 bg-black/15 p-4", collapsed && "hidden")}>
+      <div className={cn("rounded-xl border border-white/10 bg-black/15 p-4 text-foreground", collapsed && "hidden")}>
         <div className="flex items-center gap-2 text-sm font-medium">
           <Bot className="h-4 w-4 text-primary" />
           AI 写作引擎
@@ -111,7 +111,7 @@ export function Sidebar() {
           </SheetTrigger>
           <SheetContent
             side="left"
-            className="border-white/10 bg-slate-950/96 p-3 backdrop-blur-xl"
+            className="border-border bg-popover p-3 text-popover-foreground backdrop-blur-xl"
           >
             <SidebarContent />
           </SheetContent>

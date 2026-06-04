@@ -7,6 +7,7 @@ import {
   Menu,
   MoonStar,
   PenTool,
+  ShieldCheck,
   Settings2,
   SunMedium,
 } from "lucide-react";
@@ -22,6 +23,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { OptionChips } from "@/components/features/option-chips";
 import { useNovelStore } from "@/lib/store";
 import type { DeepSeekModel } from "@/types";
@@ -31,11 +33,14 @@ const models: DeepSeekModel[] = ["deepseek-chat", "deepseek-v4-flash", "deepseek
 export function Navbar() {
   const { theme, mounted, toggleTheme } = useInkMuseTheme();
   const apiKey = useNovelStore((state) => state.apiKey);
+  const apiKeyPersisted = useNovelStore((state) => state.apiKeyPersisted);
   const model = useNovelStore((state) => state.model);
   const apiBalance = useNovelStore((state) => state.apiBalance);
   const tokenUsage = useNovelStore((state) => state.tokenUsage);
   const setModel = useNovelStore((state) => state.setModel);
   const setApiKey = useNovelStore((state) => state.setApiKey);
+  const setApiKeyPersisted = useNovelStore((state) => state.setApiKeyPersisted);
+  const clearApiKey = useNovelStore((state) => state.clearApiKey);
   const setApiBalance = useNovelStore((state) => state.setApiBalance);
   const toggleSidebar = useNovelStore((state) => state.toggleSidebar);
   const setCommandOpen = useNovelStore((state) => state.setCommandOpen);
@@ -153,19 +158,35 @@ export function Navbar() {
               <Settings2 className="mr-2 h-4 w-4" />
               API Key 设置
             </DialogTrigger>
-            <DialogContent className="border-white/10 bg-slate-950/92 backdrop-blur-xl">
+            <DialogContent className="border-border bg-popover text-popover-foreground backdrop-blur-xl">
               <DialogHeader>
                 <DialogTitle>DeepSeek API Key</DialogTitle>
                 <DialogDescription>
-                  Key 会保存在当前浏览器 LocalStorage 中，用于调用代理路由。
+                  默认仅在当前页面会话中保存。开启“记住此设备”后，才会写入当前浏览器 LocalStorage。
                 </DialogDescription>
               </DialogHeader>
               <Input
                 type="password"
                 placeholder="sk-..."
                 value={apiKey}
-                onChange={(event) => setApiKey(event.target.value)}
+                onChange={(event) => setApiKey(event.target.value, apiKeyPersisted)}
               />
+              <div className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-black/10 p-3">
+                <div className="flex gap-2">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 text-cyan-300" />
+                  <div>
+                    <p className="text-sm font-medium">记住此设备</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      关闭时，刷新或关闭页面后需要重新输入 Key。
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={apiKeyPersisted}
+                  onCheckedChange={setApiKeyPersisted}
+                  aria-label="记住此设备"
+                />
+              </div>
               <div>
                 <p className="mb-2 text-sm font-medium">模型</p>
                 <OptionChips
@@ -191,6 +212,17 @@ export function Navbar() {
               >
                 {isCheckingBalance ? "查询中..." : "查询余额"}
               </Button>
+              {apiKey ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    clearApiKey();
+                    addToast({ title: "API Key 已清除", type: "success" });
+                  }}
+                >
+                  清除本机 Key
+                </Button>
+              ) : null}
             </DialogContent>
           </Dialog>
         </div>

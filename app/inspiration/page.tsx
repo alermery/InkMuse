@@ -189,7 +189,7 @@ export default function InspirationPage() {
                 key={`${idea.title}-${index}`}
                 className={`mb-4 break-inside-avoid rounded-lg bg-gradient-to-br ${borderThemes[index % borderThemes.length]} p-px`}
               >
-                <div className="rounded-lg bg-slate-950/88 p-4 backdrop-blur-xl">
+                <div className="rounded-lg border border-white/10 bg-card/88 p-4 text-card-foreground shadow-sm backdrop-blur-xl">
                   <div className="flex items-start justify-between gap-3">
                     <h2 className="text-base font-semibold leading-6">{idea.title}</h2>
                     <Badge variant="secondary" className="rounded-full">
