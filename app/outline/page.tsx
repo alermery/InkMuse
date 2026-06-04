@@ -1,0 +1,273 @@
+"use client";
+
+import { useState } from "react";
+import { ChevronDown, ChevronRight, GripVertical, Loader2, Plus, Wand2 } from "lucide-react";
+import { ModuleFormShell } from "@/components/features/module-form-shell";
+import { StreamResultPanel } from "@/components/features/stream-result-panel";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { savedEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
+import { useNovelStore } from "@/lib/store";
+
+type OutlineNode = {
+  id: string;
+  title: string;
+  children?: OutlineNode[];
+};
+
+const initialNodes: OutlineNode[] = [
+  {
+    id: "core",
+    title: "核心设定",
+    children: [
+      { id: "world", title: "世界观" },
+      { id: "power", title: "力量体系" },
+      { id: "conflict", title: "核心冲突" },
+    ],
+  },
+  {
+    id: "arc",
+    title: "角色线",
+    children: [
+      { id: "hero", title: "主角成长线" },
+      { id: "love", title: "感情线" },
+      { id: "rival", title: "宿敌线" },
+    ],
+  },
+  {
+    id: "volumes",
+    title: "卷大纲",
+    children: [
+      {
+        id: "volume-1",
+        title: "第一卷：失控的开端",
+        children: [
+          { id: "chapter-1", title: "第1章：异常委托" },
+          { id: "chapter-2", title: "第2章：第一次反转" },
+        ],
+      },
+    ],
+  },
+];
+
+function renderPlain(nodes: OutlineNode[], depth = 0): string {
+  return nodes
+    .map((node) => `${"  ".repeat(depth)}- ${node.title}${node.children ? `\n${renderPlain(node.children, depth + 1)}` : ""}`)
+    .join("\n");
+}
+
+function OutlineBranch({
+  node,
+  expanded,
+  onToggle,
+  onAction,
+}: {
+  node: OutlineNode;
+  expanded: string[];
+  onToggle: (id: string) => void;
+  onAction: (node: OutlineNode, action: string) => void;
+}) {
+  const isExpanded = expanded.includes(node.id);
+  const hasChildren = Boolean(node.children?.length);
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-black/10 p-2">
+      <div className="flex items-center gap-2">
+        <GripVertical className="h-4 w-4 text-foreground/35" />
+        <Button size="icon-xs" variant="ghost" onClick={() => onToggle(node.id)}>
+          {hasChildren && isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </Button>
+        <p className="min-w-0 flex-1 truncate text-sm font-medium">{node.title}</p>
+        <Button size="sm" variant="ghost" onClick={() => onAction(node, "扩展此章节")}>
+          扩展
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => onAction(node, "重写此段落")}>
+          重写
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => onAction(node, "添加转折")}>
+          转折
+        </Button>
+      </div>
+      {hasChildren && isExpanded ? (
+        <div className="mt-2 space-y-2 pl-6">
+          {node.children?.map((child) => (
+            <OutlineBranch
+              key={child.id}
+              node={child}
+              expanded={expanded}
+              onToggle={onToggle}
+              onAction={onAction}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export default function OutlinePage() {
+  const apiKey = useNovelStore((state) => state.apiKey);
+  const model = useNovelStore((state) => state.model);
+  const saveEntry = useNovelStore((state) => state.saveEntry);
+  const addToast = useNovelStore((state) => state.addToast);
+  const addTokenUsage = useNovelStore((state) => state.addTokenUsage);
+  const appendToDraft = useNovelStore((state) => state.appendToDraft);
+  const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
+  const [concept, setConcept] = useState("一个失败律师在记忆可交易的港城寻找妹妹失踪真相");
+  const [genre, setGenre] = useState("近未来悬疑");
+  const [targetWords, setTargetWords] = useState("120万字");
+  const [nodes, setNodes] = useState(initialNodes);
+  const [expanded, setExpanded] = useState(["core", "arc", "volumes", "volume-1"]);
+  const [output, setOutput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [queueState, setQueueState] = useState("");
+
+  function toggle(id: string) {
+    setExpanded((value) => (value.includes(id) ? value.filter((item) => item !== id) : [...value, id]));
+  }
+
+  async function generateOutline() {
+    setOutput("");
+    setError(null);
+    setIsLoading(true);
+    incrementAiCallCount();
+
+    try {
+      let next = "";
+      await streamDeepSeek({
+        apiKey,
+        model,
+        temperature: 0.8,
+        maxTokens: 4000,
+        system: "你是长篇小说结构编辑。请根据概念生成完整大纲，包含核心设定、世界观、力量体系、核心冲突、角色线、卷大纲与章节推进。使用清晰 Markdown 层级。",
+        user: `一句话概念：${concept}\n类型：${genre}\n预计字数：${targetWords}\n请生成可直接执行的长篇大纲。`,
+        onQueueState: setQueueState,
+        onToken: (token) => {
+          next += token;
+          addTokenUsage(Math.ceil(token.length / 2));
+          setOutput(next);
+        },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "生成失败");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function nodeAction(node: OutlineNode, action: string) {
+    setOutput("");
+    setError(null);
+    setIsLoading(true);
+    incrementAiCallCount();
+
+    try {
+      let next = "";
+      await streamDeepSeek({
+        apiKey,
+        model,
+        temperature: 0.8,
+        maxTokens: 2500,
+        system: "你是小说大纲编辑，擅长局部扩写、重写和添加转折。",
+        user: `当前大纲：\n${renderPlain(nodes)}\n\n请对节点「${node.title}」执行：${action}。输出可替换到大纲中的内容。`,
+        onQueueState: setQueueState,
+        onToken: (token) => {
+          next += token;
+          addTokenUsage(Math.ceil(token.length / 2));
+          setOutput(next);
+        },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "操作失败");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <ModuleFormShell
+      title="大纲规划"
+      description="从一句话概念生成完整小说大纲，并支持对任意节点进行 AI 扩展、重写、添加转折和章节生成。"
+      left={
+        <section className="glass-panel rounded-lg border p-4">
+          <div className="space-y-4">
+            <div>
+              <p className="mb-2 text-sm font-medium">一句话概念</p>
+              <Textarea value={concept} onChange={(event) => setConcept(event.target.value)} className="min-h-24 border-white/10 bg-black/10" />
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium">类型</p>
+              <Input value={genre} onChange={(event) => setGenre(event.target.value)} className="border-white/10 bg-black/10" />
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium">预计字数</p>
+              <Input value={targetWords} onChange={(event) => setTargetWords(event.target.value)} className="border-white/10 bg-black/10" />
+            </div>
+            <Button className="w-full" onClick={generateOutline} disabled={isLoading}>
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+              生成完整大纲
+            </Button>
+            <Button
+              className="w-full"
+              variant="secondary"
+              onClick={() =>
+                setNodes((value) => [
+                  ...value,
+                  { id: `custom-${Date.now()}`, title: "新卷：待规划", children: [] },
+                ])
+              }
+            >
+              <Plus className="h-4 w-4" />
+              添加节点
+            </Button>
+          </div>
+        </section>
+      }
+      right={
+        <div className="space-y-5">
+          <section className="glass-panel rounded-lg border p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold">大纲树</h2>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => appendToDraft(`<pre>${renderPlain(nodes)}</pre>`)}
+              >
+                生成章节内容
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {nodes.map((node) => (
+                <OutlineBranch key={node.id} node={node} expanded={expanded} onToggle={toggle} onAction={nodeAction} />
+              ))}
+            </div>
+          </section>
+          <StreamResultPanel
+            title="AI 大纲编辑"
+            content={output}
+            isLoading={isLoading}
+            error={error}
+            queueState={queueState}
+            onSave={
+              output
+                ? () =>
+                    {
+                      saveEntry(
+                      savedEntryFromText("大纲", "大纲规划结果", output, [
+                        genre,
+                        targetWords,
+                      ]),
+                    );
+                      addToast({ title: "大纲已保存", type: "success" });
+                    }
+                : undefined
+            }
+            onCopy={output ? () => navigator.clipboard.writeText(output) : undefined}
+          />
+        </div>
+      }
+    />
+  );
+}
