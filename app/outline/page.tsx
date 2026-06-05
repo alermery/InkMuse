@@ -74,6 +74,89 @@ function renameNode(nodes: OutlineNode[], id: string, title: string): OutlineNod
   });
 }
 
+function collectNodeIds(nodes: OutlineNode[]): string[] {
+  return nodes.flatMap((node) => [node.id, ...(node.children ? collectNodeIds(node.children) : [])]);
+}
+
+function cleanOutlineTitle(value: string) {
+  return value
+    .replace(/^#{1,6}\s*/, "")
+    .replace(/^[-*+]\s+/, "")
+    .replace(/^\d+[.)、]\s*/, "")
+    .replace(/^第[一二三四五六七八九十百千万\d]+[章节卷部][：:、\s]*/, (match) => match.trim())
+    .replace(/\*\*|__|`/g, "")
+    .trim();
+}
+
+function lineDepth(line: string) {
+  const leading = line.match(/^\s*/)?.[0] ?? "";
+  const heading = line.match(/^#{1,6}\s+/);
+
+  if (heading) {
+    return heading[0].trim().length - 1;
+  }
+
+  return Math.floor(leading.replace(/\t/g, "  ").length / 2);
+}
+
+function parseOutlineContent(content: string): OutlineNode[] {
+  const lines = content
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+$/g, ""))
+    .filter((line) => {
+      const trimmed = line.trim();
+      return (
+        trimmed &&
+        !trimmed.startsWith(">") &&
+        !trimmed.startsWith("```") &&
+        (/^#{1,6}\s+/.test(trimmed) ||
+          /^[-*+]\s+/.test(trimmed) ||
+          /^\d+[.)、]\s+/.test(trimmed) ||
+          /^第[一二三四五六七八九十百千万\d]+[章节卷部]/.test(trimmed))
+      );
+    });
+
+  const roots: OutlineNode[] = [];
+  const stack: { depth: number; node: OutlineNode }[] = [];
+
+  lines.forEach((line, index) => {
+    const title = cleanOutlineTitle(line.trim());
+    if (!title || title.length > 80) {
+      return;
+    }
+
+    const depth = lineDepth(line);
+    const node: OutlineNode = {
+      id: `imported-${Date.now()}-${index}`,
+      title,
+      children: [],
+    };
+
+    while (stack.length && stack[stack.length - 1].depth >= depth) {
+      stack.pop();
+    }
+
+    const parent = stack[stack.length - 1]?.node;
+    if (parent) {
+      parent.children ??= [];
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+
+    stack.push({ depth, node });
+  });
+
+  function prune(nodes: OutlineNode[]): OutlineNode[] {
+    return nodes.map((node) => {
+      const children = node.children ? prune(node.children) : [];
+      return children.length ? { ...node, children } : { id: node.id, title: node.title };
+    });
+  }
+
+  return prune(roots);
+}
+
 function OutlineBranch({
   node,
   expanded,
@@ -249,6 +332,36 @@ export default function OutlinePage() {
     }
   }
 
+  async function generateChapterContent() {
+    setOutput("");
+    setError(null);
+    setIsLoading(true);
+    incrementAiCallCount();
+
+    try {
+      let next = "";
+      await streamDeepSeek({
+        apiKey,
+        model,
+        temperature: 0.9,
+        maxTokens: 3500,
+        system:
+          "你是长篇小说正文写作助手。请根据大纲生成可直接放入章节草稿的正文，要求有场景、行动、冲突、人物心理和结尾钩子，不要只写概要。",
+        user: `小说类型：${genre || "未设置"}\n一句话概念：${concept || "未设置"}\n目标总字数：${targetWords || "未设置"}\n\n当前大纲树：\n${renderPlain(nodes)}\n\n请选择当前大纲中最适合展开的第一个待写章节，生成一章正文草稿。正文建议 1800-2500 字，开头要有明确场景，结尾留下下一章悬念。`,
+        onQueueState: setQueueState,
+        onToken: (token) => {
+          next += token;
+          addTokenUsage(Math.ceil(token.length / 2));
+          setOutput(next);
+        },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "章节正文生成失败");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <ModuleFormShell
       title="大纲规划"
@@ -287,8 +400,15 @@ export default function OutlinePage() {
             </Button>
             <SavedImportPanel
               onImport={(entry) => {
+                const parsedNodes = parseOutlineContent(entry.content);
                 setOutput(entry.content);
-                addToast({ title: "已导入收藏，可继续编辑大纲", type: "success" });
+                if (parsedNodes.length) {
+                  setNodes(parsedNodes);
+                  setExpanded(collectNodeIds(parsedNodes));
+                  addToast({ title: `已解析 ${parsedNodes.length} 个大纲节点`, type: "success" });
+                  return;
+                }
+                addToast({ title: "已导入收藏，但未识别到可解析的大纲层级", type: "info" });
               }}
             />
           </div>
@@ -302,8 +422,10 @@ export default function OutlinePage() {
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => appendToDraft(`<pre>${renderPlain(nodes)}</pre>`)}
+                onClick={generateChapterContent}
+                disabled={isLoading}
               >
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 生成章节内容
               </Button>
             </div>
@@ -343,6 +465,10 @@ export default function OutlinePage() {
             }
             onCopy={output ? () => navigator.clipboard.writeText(output) : undefined}
           />
+          <Button variant="secondary" disabled={!output} onClick={() => appendToDraft(output)}>
+            <Plus className="h-4 w-4" />
+            插入当前章节草稿
+          </Button>
         </div>
       }
     />

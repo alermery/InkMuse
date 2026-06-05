@@ -36,7 +36,7 @@ export function SavedImportPanel({
   const sources = Object.keys(groups);
 
   return (
-    <section className="glass-panel rounded-lg border p-4">
+    <section className="glass-panel flex max-h-[560px] flex-col rounded-lg border p-4">
       <div className="flex items-center gap-2">
         <BookMarked className="h-4 w-4 text-primary" />
         <h2 className="text-sm font-semibold">{title}</h2>
@@ -45,8 +45,9 @@ export function SavedImportPanel({
         </Badge>
       </div>
       <p className="mt-2 text-xs leading-5 text-muted-foreground">{description}</p>
-      <ScrollArea className="mt-3 max-h-72">
-        <div className="space-y-3 pr-3">
+      <div className="relative mt-3 min-h-0 flex-1">
+        <ScrollArea className="h-[360px] max-h-[45vh] min-h-0">
+          <div className="space-y-3 pr-3 pb-8">
           {entries.length === 0 ? (
             <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
               当前没有可导入的收藏。
@@ -76,8 +77,12 @@ export function SavedImportPanel({
               ))}
             </div>
           ))}
-        </div>
-      </ScrollArea>
+          </div>
+        </ScrollArea>
+        {entries.length > 2 ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-background/90 to-transparent" />
+        ) : null}
+      </div>
     </section>
   );
 }
