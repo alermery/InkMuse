@@ -30,6 +30,7 @@ export default function ContinuationPage() {
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
   const [mode, setMode] = usePersistedState("inkmuse:continuation:mode", ["续写模式"]);
   const [length, setLength] = usePersistedState("inkmuse:continuation:length", ["500字"]);
+  const [customLength, setCustomLength] = usePersistedState("inkmuse:continuation:customLength", "");
   const [temperature, setTemperature] = usePersistedState("inkmuse:continuation:temperature", 0.85);
   const [styleRef, setStyleRef] = usePersistedState("inkmuse:continuation:styleRef", "");
   const [banWords, setBanWords] = usePersistedState("inkmuse:continuation:banWords", "命运的齿轮, 他不知道的是");
@@ -37,6 +38,8 @@ export default function ContinuationPage() {
   const [output, setOutput] = usePersistedState("inkmuse:continuation:output", "");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const normalizedCustomLength = customLength.trim().replace(/[^\d]/g, "");
+  const effectiveLength = normalizedCustomLength ? `${normalizedCustomLength}字` : length[0];
 
   async function generateContinuation() {
     setOutput("");
@@ -49,8 +52,16 @@ export default function ContinuationPage() {
       await streamDeepSeek({
         apiKey,
         temperature,
-        system: "你是小说续写助手。保持既有文风、人称、剧情逻辑与角色说话方式，推进情节但不偷换设定。支持续写、润色、改写、扩写、缩写和情感注入。",
-        user: `模式：${mode[0]}\n目标长度：${length[0]}，请严格控制在目标字数上下 10% 以内。\n创意度：${temperature}\n禁止出现：${banWords}\n风格参考：${styleRef || "无"}\n\n前文：\n${plainText(chapterDraft).slice(-3000)}`,
+        system:
+          "你是小说续写助手。请保持既有文风、人称、剧情逻辑与角色说话方式，推进情节但不偷换设定。支持续写、润色、改写、扩写、缩写和情感注入。",
+        user: `模式：${mode[0]}
+目标长度：${effectiveLength}，请严格控制在目标字数上下 10% 以内。
+创意度：${temperature}
+禁止出现：${banWords}
+风格参考：${styleRef || "无"}
+
+前文：
+${plainText(chapterDraft).slice(-3000)}`,
         onToken: (token) => {
           next += token;
           setOutput(next);
@@ -98,13 +109,41 @@ export default function ContinuationPage() {
             <div>
               <p className="mb-2 text-sm font-medium">续写长度</p>
               <OptionChips options={lengths} value={length} onChange={setLength} />
+              <div className="mt-3">
+                <p className="mb-2 text-xs text-muted-foreground">自定义字数（填写后优先生效）</p>
+                <Input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="例如：1500"
+                  value={customLength}
+                  onChange={(event) => setCustomLength(event.target.value.replace(/[^\d]/g, ""))}
+                  className="border-white/10 bg-black/10"
+                />
+              </div>
             </div>
             <div>
               <p className="mb-2 text-sm font-medium">创意度 {temperature.toFixed(1)}</p>
-              <Input type="range" min={0.1} max={1.5} step={0.1} value={temperature} onChange={(event) => setTemperature(Number(event.target.value))} />
+              <Input
+                type="range"
+                min={0.1}
+                max={1.5}
+                step={0.1}
+                value={temperature}
+                onChange={(event) => setTemperature(Number(event.target.value))}
+              />
             </div>
-            <Textarea value={styleRef} onChange={(event) => setStyleRef(event.target.value)} placeholder="风格参考文本" className="min-h-24 border-white/10 bg-black/10" />
-            <Textarea value={banWords} onChange={(event) => setBanWords(event.target.value)} placeholder="禁止出现词汇" className="min-h-20 border-white/10 bg-black/10" />
+            <Textarea
+              value={styleRef}
+              onChange={(event) => setStyleRef(event.target.value)}
+              placeholder="风格参考文本"
+              className="min-h-24 border-white/10 bg-black/10"
+            />
+            <Textarea
+              value={banWords}
+              onChange={(event) => setBanWords(event.target.value)}
+              placeholder="禁止出现词汇"
+              className="min-h-20 border-white/10 bg-black/10"
+            />
             <Button className="w-full" onClick={generateContinuation} disabled={isLoading}>
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
               执行
@@ -117,7 +156,7 @@ export default function ContinuationPage() {
               onImport={(entry) => {
                 setStyleRef(entry.content);
                 setOutput(entry.content);
-                addToast({ title: "已导入续写收藏，可继续改写", type: "success" });
+                addToast({ title: "已导入收藏，可继续改写", type: "success" });
               }}
             />
           </div>
@@ -131,8 +170,8 @@ export default function ContinuationPage() {
             content={output}
             isLoading={isLoading}
             error={error}
-            targetWords={length[0]}
-            onSave={output ? () => saveEntry(savedEntryFromText("续写", mode[0], output, [mode[0], length[0]])) : undefined}
+            targetWords={effectiveLength}
+            onSave={output ? () => saveEntry(savedEntryFromText("续写", mode[0], output, [mode[0], effectiveLength])) : undefined}
             onCopy={output ? () => navigator.clipboard.writeText(output) : undefined}
           />
           <Button variant="secondary" disabled={!output} onClick={() => appendToDraft(output)}>

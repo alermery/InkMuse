@@ -9,6 +9,7 @@ import {
   Compass,
   FileText,
   Home,
+  LibraryBig,
   Menu,
   MessageCircleMore,
   ScrollText,
@@ -25,6 +26,7 @@ const navItems = [
   { href: "/", label: "工作台", icon: Home },
   { href: "/inspiration", label: "灵感坊", icon: Sparkles },
   { href: "/outline", label: "大纲", icon: Compass },
+  { href: "/novel", label: "小说查看", icon: LibraryBig },
   { href: "/character", label: "角色", icon: UserRound },
   { href: "/world", label: "世界观", icon: ScrollText },
   { href: "/continuation", label: "续写", icon: FileText },
@@ -59,6 +61,7 @@ function SidebarContent() {
                   ? "bg-primary/14 text-foreground"
                   : "text-foreground/72 hover:-translate-y-0.5 hover:bg-primary/10 hover:text-foreground",
               )}
+              title={item.label}
             >
               {isActive ? (
                 <motion.span
