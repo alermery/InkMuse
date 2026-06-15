@@ -15,7 +15,7 @@ import { useNovelStore } from "@/lib/store";
 import { usePersistedState } from "@/lib/use-persisted-state";
 import type { EncyclopediaEntry } from "@/types";
 
-const categories: EncyclopediaEntry["category"][] = ["瑙掕壊", "涓栫晫瑙?", "閬撳叿", "鏈", "绔犺妭", "鍏朵粬"];
+const categories: EncyclopediaEntry["category"][] = ["角色", "世界观", "道具", "术语", "章节", "其他"];
 
 function plainText(html: string) {
   return html.replace(/<[^>]+>/g, "\n").replace(/\n+/g, "\n").trim();
@@ -33,7 +33,7 @@ export default function SettingPage() {
   const addToast = useNovelStore((state) => state.addToast);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
   const [query, setQuery] = usePersistedState("inkmuse:setting:query", "");
-  const [category, setCategory] = usePersistedState<string[]>("inkmuse:setting:category", ["涓栫晫瑙?"]);
+  const [category, setCategory] = usePersistedState<string[]>("inkmuse:setting:category", ["世界观"]);
   const [tags, setTags] = usePersistedState("inkmuse:setting:tags", "");
   const [sourceText, setSourceText] = usePersistedState("inkmuse:setting:sourceText", "");
   const [output, setOutput] = usePersistedState("inkmuse:setting:output", "");
