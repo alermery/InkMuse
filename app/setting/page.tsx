@@ -15,7 +15,7 @@ import { useNovelStore } from "@/lib/store";
 import { usePersistedState } from "@/lib/use-persisted-state";
 import type { EncyclopediaEntry } from "@/types";
 
-const categories: EncyclopediaEntry["category"][] = ["角色", "世界观", "道具", "术语", "章节", "其他"];
+const categories: EncyclopediaEntry["category"][] = ["瑙掕壊", "涓栫晫瑙?", "閬撳叿", "鏈", "绔犺妭", "鍏朵粬"];
 
 function plainText(html: string) {
   return html.replace(/<[^>]+>/g, "\n").replace(/\n+/g, "\n").trim();
@@ -33,7 +33,7 @@ export default function SettingPage() {
   const addToast = useNovelStore((state) => state.addToast);
   const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
   const [query, setQuery] = usePersistedState("inkmuse:setting:query", "");
-  const [category, setCategory] = usePersistedState<string[]>("inkmuse:setting:category", ["世界观"]);
+  const [category, setCategory] = usePersistedState<string[]>("inkmuse:setting:category", ["涓栫晫瑙?"]);
   const [tags, setTags] = usePersistedState("inkmuse:setting:tags", "");
   const [sourceText, setSourceText] = usePersistedState("inkmuse:setting:sourceText", "");
   const [output, setOutput] = usePersistedState("inkmuse:setting:output", "");
@@ -42,9 +42,7 @@ export default function SettingPage() {
 
   const filtered = useMemo(() => {
     const keyword = query.trim().toLowerCase();
-    if (!keyword) {
-      return entries;
-    }
+    if (!keyword) return entries;
 
     return entries.filter((entry) =>
       `${entry.title} ${entry.content} ${entry.tags.join(" ")}`.toLowerCase().includes(keyword),
@@ -64,7 +62,9 @@ export default function SettingPage() {
         apiBaseUrl,
         apiKey,
         model,
-        system: "你是小说设定集管理员。请从文本中提取角色、世界观、道具、术语、地点、规则等设定，整理为条目卡片。输出 Markdown，每条包含标题、分类、标签、正文、关联章节建议。",
+        useProjectMemory: true,
+        system:
+          "你是小说设定集管理员。请从文本中提取角色、世界观、道具、术语、地点、规则等设定，整理为条目卡片。输出 Markdown，每条包含标题、分类、标签、正文和关联章节建议。",
         user: `分类偏好：${category[0]}\n标签：${tags}\n文本：\n${sourceText || plainText(chapterDraft)}`,
         onToken: (token) => {
           next += token;
@@ -81,7 +81,7 @@ export default function SettingPage() {
   return (
     <AppShell
       title="设定集"
-      description="统一管理角色、世界观、道具和术语，支持搜索、标签、AI 自动提取和关联章节。"
+      description="统一管理角色、世界观、道具和术语，支持搜索、标签、AI 自动提取和章节关联。"
     >
       <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
         <section className="glass-panel rounded-lg border p-4">
@@ -91,7 +91,12 @@ export default function SettingPage() {
               <OptionChips options={categories} value={category} onChange={setCategory} />
             </div>
             <Input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="标签，逗号分隔" className="border-white/10 bg-black/10" />
-            <Textarea value={sourceText} onChange={(event) => setSourceText(event.target.value)} placeholder="可贴入章节文本；留空则从当前章节草稿提取" className="min-h-40 border-white/10 bg-black/10" />
+            <Textarea
+              value={sourceText}
+              onChange={(event) => setSourceText(event.target.value)}
+              placeholder="可粘贴章节文本；留空则从当前章节草稿提取"
+              className="min-h-40 border-white/10 bg-black/10"
+            />
             <Button className="w-full" onClick={extractSettings} disabled={isLoading}>
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
               AI 自动提取
@@ -100,11 +105,12 @@ export default function SettingPage() {
               onImport={(entry) => {
                 setSourceText(entry.content);
                 setOutput(entry.content);
-                addToast({ title: "已导入收藏，可提取或保存为设定", type: "success" });
+                addToast({ title: "已导入收藏，可继续提取或保存为设定", type: "success" });
               }}
             />
           </div>
         </section>
+
         <div className="space-y-5">
           <div className="glass-panel rounded-lg border p-4">
             <div className="flex items-center gap-2">
@@ -112,6 +118,7 @@ export default function SettingPage() {
               <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="全文搜索设定、标签、正文" className="border-white/10 bg-black/10" />
             </div>
           </div>
+
           <StreamResultPanel
             title="AI 提取结果"
             content={output}
@@ -131,11 +138,10 @@ export default function SettingPage() {
                 : undefined
             }
           />
+
           <section className="grid gap-3 md:grid-cols-2">
             {filtered.length === 0 ? (
-              <div className="glass-panel rounded-lg border p-5 text-sm text-foreground/50">
-                暂无设定条目。
-              </div>
+              <div className="glass-panel rounded-lg border p-5 text-sm text-foreground/50">暂无设定条目。</div>
             ) : null}
             {filtered.map((entry) => (
               <article key={entry.id} className="glass-panel rounded-lg border p-4">
@@ -154,7 +160,9 @@ export default function SettingPage() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Badge>{entry.category}</Badge>
                   {entry.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary">{tag}</Badge>
+                    <Badge key={tag} variant="secondary">
+                      {tag}
+                    </Badge>
                   ))}
                 </div>
               </article>

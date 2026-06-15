@@ -207,6 +207,7 @@ export function WorkspacePage() {
         apiBaseUrl,
         apiKey,
         model,
+        useProjectMemory: true,
         temperature: 1.2,
         maxTokens: 1200,
         system: "你是小说编辑，请给作者生成一条今日可执行灵感，包含场景、冲突和一句钩子。",

@@ -28,7 +28,7 @@ import { Switch } from "@/components/ui/switch";
 import { OptionChips } from "@/components/features/option-chips";
 import { useNovelStore } from "@/lib/store";
 import { getDefaultBaseUrl, isBaseUrlEditable, providerLabels, providerModelOptions } from "@/lib/llm";
-import type { LlmModel, LlmProvider } from "@/types";
+import type { LlmProvider } from "@/types";
 
 const providers: LlmProvider[] = [
   "deepseek",
@@ -60,7 +60,6 @@ export function Navbar() {
   const tokenUsage = useNovelStore((state) => state.tokenUsage);
   const setProvider = useNovelStore((state) => state.setProvider);
   const setApiBaseUrl = useNovelStore((state) => state.setApiBaseUrl);
-  const setModel = useNovelStore((state) => state.setModel);
   const setApiKey = useNovelStore((state) => state.setApiKey);
   const setApiKeyPersisted = useNovelStore((state) => state.setApiKeyPersisted);
   const clearApiKey = useNovelStore((state) => state.clearApiKey);
@@ -69,6 +68,7 @@ export function Navbar() {
   const setCommandOpen = useNovelStore((state) => state.setCommandOpen);
   const addToast = useNovelStore((state) => state.addToast);
   const [isCheckingBalance, setIsCheckingBalance] = useState(false);
+  const [modelDraft, setModelDraft] = useState(model);
 
   async function handleBalanceQuery() {
     if (isCheckingBalance || provider !== "deepseek") {
@@ -145,14 +145,18 @@ export function Navbar() {
             <DialogContent className="border-border bg-popover text-popover-foreground backdrop-blur-xl">
               <DialogHeader>
                 <DialogTitle>LLM 接入</DialogTitle>
-                <DialogDescription>可切换多种模型平台，支持 OpenAI 兼容服务。</DialogDescription>
+                <DialogDescription>支持多种模型平台，模型名可自由填写。</DialogDescription>
               </DialogHeader>
               <div>
                 <p className="mb-2 text-sm font-medium">提供商</p>
                 <OptionChips
                   options={providerOptionLabels}
                   value={[selectedProviderLabel]}
-                  onChange={(value) => setProvider(providerByLabel[value[0]] ?? provider)}
+                  onChange={(value) => {
+                    const next = providerByLabel[value[0]] ?? provider;
+                    setProvider(next);
+                    setModelDraft(providerModelOptions[next][0] ?? modelDraft);
+                  }}
                 />
               </div>
               {editableBaseUrl ? (
@@ -175,7 +179,26 @@ export function Navbar() {
               </div>
               <div>
                 <p className="mb-2 text-sm font-medium">模型</p>
-                <OptionChips options={modelOptions} value={[model]} onChange={(value) => setModel(value[0] as LlmModel)} />
+                <div className="space-y-3">
+                  <OptionChips
+                    options={modelOptions}
+                    value={modelOptions.includes(model) ? [model] : []}
+                    onChange={(value) => {
+                      const next = value[0];
+                      setModelDraft(next);
+                    useNovelStore.getState().setModel(next || modelDraft);
+                  }}
+                />
+                  <Input
+                    value={modelDraft}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setModelDraft(next);
+                    }}
+                    onBlur={() => useNovelStore.getState().setModel(modelDraft)}
+                    placeholder="手动输入模型名，例如 deepseek-v3 / claude-3.5-sonnet / gpt-4.1-mini"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3 rounded-xl border border-white/10 bg-black/10 p-3 text-sm">
                 <div>

@@ -1,15 +1,32 @@
 import type {
   EncyclopediaEntry,
+  Novel,
   OutlineMemoryNode,
   ProjectChapterMemory,
   ProjectMemorySnapshot,
   SavedEntry,
 } from "@/types";
 
-const PROJECT_MEMORY_STORAGE = "inkmuse-project-memory";
+export const PROJECT_MEMORY_STORAGE = "inkmuse-project-memory";
+export const PROJECT_MEMORY_SYNC_EVENT = "inkmuse-project-memory-sync";
+export const NOVEL_CHAPTERS_STORAGE = "inkmuse:novel:chapters";
+export const OUTLINE_NODES_STORAGE = "inkmuse:outline:nodes";
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]+>/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function readStoredJson<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 function outlineToLines(nodes: OutlineMemoryNode[], level = 0): string[] {
@@ -38,6 +55,44 @@ function summarizeChapters(chapters: ProjectChapterMemory[], limit = 6) {
   return recent
     .map((chapter, index) => `- 第${index + 1}章《${chapter.title}》：${stripHtml(chapter.content).slice(0, 220)}`)
     .join("\n");
+}
+
+export function loadPersistedChapters() {
+  return readStoredJson<ProjectChapterMemory[]>(NOVEL_CHAPTERS_STORAGE, []);
+}
+
+export function loadPersistedOutlineNodes() {
+  return readStoredJson<OutlineMemoryNode[]>(OUTLINE_NODES_STORAGE, []);
+}
+
+export function createProjectMemorySnapshot({
+  currentNovel,
+  chapterDraft,
+  savedEntries,
+  encyclopediaEntries,
+  chapters,
+  outlineNodes,
+}: {
+  currentNovel: Novel | null;
+  chapterDraft: string;
+  savedEntries: SavedEntry[];
+  encyclopediaEntries: EncyclopediaEntry[];
+  chapters: ProjectChapterMemory[];
+  outlineNodes: OutlineMemoryNode[];
+}): ProjectMemorySnapshot {
+  return {
+    id: "default-memory",
+    novelId: currentNovel?.id ?? "novel-1",
+    title: currentNovel?.title ?? "未命名项目",
+    genre: currentNovel?.genre ?? "",
+    synopsis: currentNovel?.synopsis ?? "",
+    chapterDraft,
+    chapters,
+    outlineNodes,
+    savedEntries,
+    encyclopediaEntries,
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export function buildProjectMemory(snapshot: ProjectMemorySnapshot) {
@@ -100,16 +155,9 @@ export function enrichUserPromptWithProjectMemory(userPrompt: string, snapshot: 
 export function saveProjectMemory(snapshot: ProjectMemorySnapshot) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(PROJECT_MEMORY_STORAGE, JSON.stringify(snapshot));
+  window.dispatchEvent(new Event(PROJECT_MEMORY_SYNC_EVENT));
 }
 
 export function loadProjectMemory() {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(PROJECT_MEMORY_STORAGE);
-  if (!raw) return null;
-
-  try {
-    return JSON.parse(raw) as ProjectMemorySnapshot;
-  } catch {
-    return null;
-  }
+  return readStoredJson<ProjectMemorySnapshot | null>(PROJECT_MEMORY_STORAGE, null);
 }

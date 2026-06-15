@@ -124,6 +124,7 @@ export default function SavedPage() {
         apiBaseUrl,
         apiKey,
         model,
+        useProjectMemory: true,
         temperature: 0.7,
         maxTokens: 2200,
         system:

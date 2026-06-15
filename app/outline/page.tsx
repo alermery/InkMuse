@@ -289,6 +289,7 @@ export default function OutlinePage() {
         apiBaseUrl,
         apiKey,
         model,
+        useProjectMemory: true,
         temperature: 0.8,
         maxTokens: 4000,
         system: "你是长篇小说结构编辑。请根据概念生成完整大纲，包含核心设定、世界观、力量体系、核心冲突、角色线、卷大纲与章节推进。使用清晰 Markdown 层级。",
@@ -320,6 +321,7 @@ export default function OutlinePage() {
         apiBaseUrl,
         apiKey,
         model,
+        useProjectMemory: true,
         temperature: 0.8,
         maxTokens: 2500,
         system: "你是小说大纲编辑，擅长局部扩写、重写和添加转折。",
@@ -351,6 +353,7 @@ export default function OutlinePage() {
         apiBaseUrl,
         apiKey,
         model,
+        useProjectMemory: true,
         temperature: 0.9,
         maxTokens: 3500,
         system:

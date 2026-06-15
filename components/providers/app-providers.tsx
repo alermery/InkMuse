@@ -10,6 +10,13 @@ import {
 } from "react";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { useNovelStore } from "@/lib/store";
+import {
+  createProjectMemorySnapshot,
+  loadPersistedChapters,
+  loadPersistedOutlineNodes,
+  PROJECT_MEMORY_SYNC_EVENT,
+  saveProjectMemory,
+} from "@/lib/project-memory";
 
 type ThemeMode = "dark" | "light";
 
@@ -116,6 +123,30 @@ function ClientHydrator() {
   useEffect(() => {
     queueMicrotask(hydrateFromStorage);
   }, [hydrateFromStorage]);
+
+  useEffect(() => {
+    const syncProjectMemory = () => {
+      const state = useNovelStore.getState();
+      const snapshot = createProjectMemorySnapshot({
+        currentNovel: state.currentNovel,
+        chapterDraft: state.chapterDraft,
+        savedEntries: state.savedEntries,
+        encyclopediaEntries: state.encyclopediaEntries,
+        chapters: loadPersistedChapters(),
+        outlineNodes: loadPersistedOutlineNodes(),
+      });
+      saveProjectMemory(snapshot);
+    };
+
+    const unsubscribe = useNovelStore.subscribe(syncProjectMemory);
+    window.addEventListener(PROJECT_MEMORY_SYNC_EVENT, syncProjectMemory);
+    queueMicrotask(syncProjectMemory);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener(PROJECT_MEMORY_SYNC_EVENT, syncProjectMemory);
+    };
+  }, []);
 
   return null;
 }

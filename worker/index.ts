@@ -36,6 +36,24 @@ const rateLimitWindowMs = 60_000;
 const maxRequestsPerWindow = 20;
 const requestBuckets = new Map<string, { count: number; resetAt: number }>();
 
+const defaultBaseUrls: Record<Exclude<LlmProvider, "deepseek">, string> = {
+  openai: "https://api.openai.com/v1",
+  openrouter: "https://openrouter.ai/api/v1",
+  groq: "https://api.groq.com/openai/v1",
+  siliconflow: "https://api.siliconflow.cn/v1",
+  together: "https://api.together.xyz/v1",
+  fireworks: "https://api.fireworks.ai/inference/v1",
+  "aliyun-bailian": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "volcengine-ark": "https://ark.cn-beijing.volces.com/api/v3",
+  xai: "https://api.x.ai/v1",
+  "openai-compatible": "https://api.openai.com/v1",
+};
+
+const providerKeyEnvMap: Partial<Record<Exclude<LlmProvider, "deepseek">, keyof Env>> = {
+  openai: "OPENAI_API_KEY",
+  "openai-compatible": "OPENAI_API_KEY",
+};
+
 function sse(payload: { content?: string; error?: string } | "[DONE]") {
   return payload === "[DONE]" ? "data: [DONE]\n\n" : `data: ${JSON.stringify(payload)}\n\n`;
 }
@@ -117,29 +135,25 @@ function getProviderConfig(
       apiKey: apiKeyFromHeader ?? env.DEEPSEEK_API_KEY,
       endpoint: "https://api.deepseek.com/chat/completions",
       defaultModel: "deepseek-v4-flash",
+      headers: {} as Record<string, string>,
     };
   }
 
-  const baseUrl = apiBaseUrl?.trim();
-  const defaultBaseUrls: Record<Exclude<LlmProvider, "deepseek">, string> = {
-    openai: "https://api.openai.com/v1",
-    openrouter: "https://openrouter.ai/api/v1",
-    groq: "https://api.groq.com/openai/v1",
-    siliconflow: "https://api.siliconflow.cn/v1",
-    together: "https://api.together.xyz/v1",
-    fireworks: "https://api.fireworks.ai/inference/v1",
-    "aliyun-bailian": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    "volcengine-ark": "https://ark.cn-beijing.volces.com/api/v3",
-    xai: "https://api.x.ai/v1",
-    "openai-compatible": "https://api.openai.com/v1",
-  };
+  const finalBaseUrl = (apiBaseUrl?.trim() || defaultBaseUrls[provider as Exclude<LlmProvider, "deepseek">]).replace(/\/+$/, "");
+  const envKey = providerKeyEnvMap[provider as Exclude<LlmProvider, "deepseek">];
+  const fallbackKey = envKey ? env[envKey] : undefined;
 
-  const finalBaseUrl = (baseUrl || defaultBaseUrls[provider as Exclude<LlmProvider, "deepseek">]).replace(/\/+$/, "");
+  const headers: Record<string, string> = {};
+  if (provider === "openrouter") {
+    headers["HTTP-Referer"] = "https://inkmuse.xyz";
+    headers["X-Title"] = "InkMuse";
+  }
 
   return {
-    apiKey: apiKeyFromHeader ?? env.OPENAI_API_KEY,
+    apiKey: apiKeyFromHeader ?? fallbackKey,
     endpoint: `${finalBaseUrl}/chat/completions`,
     defaultModel: "gpt-4.1-mini",
+    headers,
   };
 }
 
@@ -253,6 +267,7 @@ async function handleLlm(request: Request, env: Env) {
         Authorization: `Bearer ${config.apiKey}`,
         "Content-Type": "application/json",
         Accept: "text/event-stream",
+        ...config.headers,
       },
       body: JSON.stringify({
         model: body.model || config.defaultModel,

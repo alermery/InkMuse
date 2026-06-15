@@ -1,14 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  Clipboard,
-  Loader2,
-  RefreshCw,
-  Save,
-  Star,
-  Trash2,
-} from "lucide-react";
+import { Clipboard, Loader2, RefreshCw, Save, Star, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TooltipButton } from "@/components/ui/tooltip-button";
@@ -60,6 +53,7 @@ export default function InspirationPage() {
   const [expandingTitle, setExpandingTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [queueState, setQueueState] = useState("");
+
   const favoriteIds = useMemo(() => {
     const map = new Map<string, string>();
     savedEntries
@@ -70,7 +64,7 @@ export default function InspirationPage() {
 
   const system = useMemo(
     () =>
-      "你是一位资深网文编辑和创意大师，精通各类网络小说的创作技巧。请根据用户指定的类型和方向，生成富有创意和吸引力的小说灵感。灵感要新颖独特，避免老套设定；要有明确故事张力和冲突点；适合扩展成长篇小说；语言生动，画面感强。必须只返回 JSON 数组，每个元素包含 title, description, expansion_hooks。",
+      "你是一位资深网文编辑和创意策划，擅长生成兼具卖点、冲突和延展性的小说灵感。请只返回 JSON 数组，每个元素包含 title、description、expansion_hooks。",
     [],
   );
 
@@ -89,19 +83,18 @@ export default function InspirationPage() {
         apiBaseUrl,
         apiKey,
         model,
+        useProjectMemory: true,
         system,
         temperature: 1.2,
         maxTokens: 2000,
-        user: `类型：${selectedGenres.join("、")}。方向：${selectedDirection[0]}。情感基调：${selectedTone[0]}。生成数量：${count}。每条 description 约 200 字，expansion_hooks 给 3 条。`,
+        user: `类型：${selectedGenres.join("、")}。方向：${selectedDirection[0]}。情绪基调：${selectedTone[0]}。生成数量：${count}。每条 description 约 200 字，expansion_hooks 给 3 条。`,
         onQueueState: setQueueState,
         onToken: (token) => {
           output += token;
           addTokenUsage(Math.ceil(token.length / 2));
           setRaw(output);
           const parsed = parseJsonArray<GeneratedIdea>(output);
-          if (parsed.length) {
-            setIdeas(parsed);
-          }
+          if (parsed.length) setIdeas(parsed);
         },
       });
       const parsed = parseJsonArray<GeneratedIdea>(output);
@@ -126,6 +119,7 @@ export default function InspirationPage() {
         apiBaseUrl,
         apiKey,
         model,
+        useProjectMemory: true,
         system: "你是资深网文编辑，请把给定灵感扩展为可执行的长篇小说方案。",
         temperature: 1.0,
         maxTokens: 2000,
@@ -158,20 +152,18 @@ export default function InspirationPage() {
 
   function toggleFavorite(idea: GeneratedIdea) {
     const existingId = favoriteIds.get(idea.title);
-
     if (existingId) {
       removeSavedEntry(existingId);
       addToast({ title: "已取消收藏", type: "info" });
       return;
     }
-
     saveIdea(idea);
   }
 
   return (
     <ModuleFormShell
       title="灵感坊"
-      description="按类型、方向和情感基调生成灵感卡片，支持收藏、扩展、复制和保存到工作台。"
+      description="按类型、方向和情绪基调生成灵感卡片，支持收藏、扩展、复制和保存到工作台。"
       left={
         <section className="glass-panel rounded-lg border p-4">
           <div className="space-y-5">
@@ -184,7 +176,7 @@ export default function InspirationPage() {
               <OptionChips options={directions} value={selectedDirection} onChange={setSelectedDirection} />
             </div>
             <div>
-              <p className="mb-2 text-sm font-medium">情感基调</p>
+              <p className="mb-2 text-sm font-medium">情绪基调</p>
               <OptionChips options={tones} value={selectedTone} onChange={setSelectedTone} />
             </div>
             <div>
@@ -231,9 +223,7 @@ export default function InspirationPage() {
                       {selectedDirection[0]}
                     </Badge>
                   </div>
-                  <p className="serif-body mt-3 text-sm leading-7 text-foreground/78">
-                    {idea.description}
-                  </p>
+                  <p className="serif-body mt-3 text-sm leading-7 text-foreground/78">{idea.description}</p>
                   <div className="mt-4 space-y-2">
                     {idea.expansion_hooks?.map((hook) => (
                       <p key={hook} className="rounded-md bg-white/7 px-3 py-2 text-xs text-foreground/65">
@@ -276,15 +266,11 @@ export default function InspirationPage() {
               </article>
             ))}
           </div>
+
           {!ideas.length ? (
-            <StreamResultPanel
-              title="流式 JSON 输出"
-              content={raw}
-              isLoading={isLoading}
-              error={error}
-              queueState={queueState}
-            />
+            <StreamResultPanel title="流式 JSON 输出" content={raw} isLoading={isLoading} error={error} queueState={queueState} />
           ) : null}
+
           <StreamResultPanel
             title="灵感扩展"
             content={expanded}
@@ -293,15 +279,10 @@ export default function InspirationPage() {
             queueState={queueState}
             onSave={
               expanded
-                ? () =>
-                    {
-                      saveEntry(
-                      savedEntryFromText("灵感坊", "灵感扩展", expanded, [
-                        selectedDirection[0],
-                      ]),
-                    );
-                      addToast({ title: "扩展内容已保存", type: "success" });
-                    }
+                ? () => {
+                    saveEntry(savedEntryFromText("灵感坊", "灵感扩展", expanded, [selectedDirection[0]]));
+                    addToast({ title: "扩展内容已保存", type: "success" });
+                  }
                 : undefined
             }
           />
