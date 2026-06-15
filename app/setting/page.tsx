@@ -22,7 +22,10 @@ function plainText(html: string) {
 }
 
 export default function SettingPage() {
+  const provider = useNovelStore((state) => state.provider);
+  const apiBaseUrl = useNovelStore((state) => state.apiBaseUrl);
   const apiKey = useNovelStore((state) => state.apiKey);
+  const model = useNovelStore((state) => state.model);
   const chapterDraft = useNovelStore((state) => state.chapterDraft);
   const entries = useNovelStore((state) => state.encyclopediaEntries);
   const saveSetting = useNovelStore((state) => state.saveSetting);
@@ -57,7 +60,10 @@ export default function SettingPage() {
     try {
       let next = "";
       await streamDeepSeek({
+        provider,
+        apiBaseUrl,
         apiKey,
+        model,
         system: "你是小说设定集管理员。请从文本中提取角色、世界观、道具、术语、地点、规则等设定，整理为条目卡片。输出 Markdown，每条包含标题、分类、标签、正文、关联章节建议。",
         user: `分类偏好：${category[0]}\n标签：${tags}\n文本：\n${sourceText || plainText(chapterDraft)}`,
         onToken: (token) => {

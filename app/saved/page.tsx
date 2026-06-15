@@ -29,6 +29,8 @@ function groupBySource(entries: ReturnType<typeof useNovelStore.getState>["saved
 }
 
 export default function SavedPage() {
+  const provider = useNovelStore((state) => state.provider);
+  const apiBaseUrl = useNovelStore((state) => state.apiBaseUrl);
   const apiKey = useNovelStore((state) => state.apiKey);
   const model = useNovelStore((state) => state.model);
   const savedEntries = useNovelStore((state) => state.savedEntries);
@@ -118,6 +120,8 @@ export default function SavedPage() {
     try {
       let next = "";
       await streamDeepSeek({
+        provider,
+        apiBaseUrl,
         apiKey,
         model,
         temperature: 0.7,

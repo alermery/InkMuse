@@ -66,7 +66,13 @@ export interface SavedEntry {
 
 export interface EncyclopediaEntry {
   id: string;
-  category: "角色" | "世界观" | "道具" | "术语" | "章节" | "其他";
+  category:
+    | "角色"
+    | "世界观"
+    | "道具"
+    | "术语"
+    | "章节"
+    | "其他";
   title: string;
   content: string;
   tags: string[];
@@ -74,9 +80,49 @@ export interface EncyclopediaEntry {
   createdAt: string;
 }
 
-export type DeepSeekModel =
-  | "deepseek-v4-flash"
-  | "deepseek-v4-pro";
+export type LlmProvider =
+  | "deepseek"
+  | "openai"
+  | "openrouter"
+  | "groq"
+  | "siliconflow"
+  | "together"
+  | "fireworks"
+  | "aliyun-bailian"
+  | "volcengine-ark"
+  | "xai"
+  | "openai-compatible";
+
+export type LlmModel = string;
+
+export interface OutlineMemoryNode {
+  id: string;
+  title: string;
+  children?: OutlineMemoryNode[];
+}
+
+export interface ProjectChapterMemory {
+  id: string;
+  title: string;
+  content: string;
+  source: string;
+  createdAt: string;
+  wordCount: number;
+}
+
+export interface ProjectMemorySnapshot {
+  id: string;
+  novelId: string;
+  title: string;
+  genre: string;
+  synopsis: string;
+  chapterDraft: string;
+  chapters: ProjectChapterMemory[];
+  outlineNodes: OutlineMemoryNode[];
+  savedEntries: SavedEntry[];
+  encyclopediaEntries: EncyclopediaEntry[];
+  updatedAt: string;
+}
 
 export interface ToastMessage {
   id: string;

@@ -1,45 +1,35 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   BookOpen,
+  BrainCircuit,
   FileText,
   Layers3,
   LibraryBig,
+  Loader2,
   Plus,
   Settings2,
   Trash2,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { SavedImportPanel } from "@/components/features/saved-import-panel";
+import { StreamResultPanel } from "@/components/features/stream-result-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipButton } from "@/components/ui/tooltip-button";
+import { streamLlm } from "@/lib/ai-stream";
+import { buildProjectAnalysisPrompt, saveProjectMemory } from "@/lib/project-memory";
 import { countChineseWords } from "@/lib/word-count";
 import { useNovelStore } from "@/lib/store";
 import { usePersistedState } from "@/lib/use-persisted-state";
+import type { OutlineMemoryNode, ProjectChapterMemory, ProjectMemorySnapshot } from "@/types";
 
-type NovelChapter = {
-  id: string;
-  title: string;
-  content: string;
-  source: string;
-  createdAt: string;
-  wordCount: number;
-};
-
-type OutlineNode = {
-  id: string;
-  title: string;
-  children?: OutlineNode[];
-};
-
-const outlineInitialValue: OutlineNode[] = [];
 const chapterHeadingPattern =
-  /^(#{1,3}\s*)?(第[一二三四五六七八九十百千万\d]+[章节卷回部篇][：:、\s]?.*|Chapter\s+\d+.*)$/i;
+  /^(#{1,3}\s*)?(第[一二三四五六七八九十百千万\d]+[章节卷回部篇][：:\s]?.*|Chapter\s+\d+.*)$/i;
 
 function createId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -54,11 +44,9 @@ function normalizeTitle(value: string, fallback: string) {
   return title || fallback || "未命名章节";
 }
 
-function splitIntoChapters(content: string, fallbackTitle: string, source: string): NovelChapter[] {
+function splitIntoChapters(content: string, fallbackTitle: string, source: string): ProjectChapterMemory[] {
   const text = plainText(content);
-  if (!text) {
-    return [];
-  }
+  if (!text) return [];
 
   const sections: { title: string; lines: string[] }[] = [];
   let current: { title: string; lines: string[] } | null = null;
@@ -66,38 +54,23 @@ function splitIntoChapters(content: string, fallbackTitle: string, source: strin
   text.split(/\r?\n/).forEach((line) => {
     const trimmed = line.trim();
     if (chapterHeadingPattern.test(trimmed)) {
-      if (current) {
-        sections.push(current);
-      }
-      current = {
-        title: normalizeTitle(trimmed, fallbackTitle),
-        lines: [trimmed],
-      };
+      if (current) sections.push(current);
+      current = { title: normalizeTitle(trimmed, fallbackTitle), lines: [trimmed] };
       return;
     }
-
-    if (current) {
-      current.lines.push(line);
-    }
+    if (current) current.lines.push(line);
   });
 
-  if (current) {
-    sections.push(current);
-  }
+  if (current) sections.push(current);
 
   const now = new Date().toISOString();
   const rawChapters = sections.length
-    ? sections
-        .map((section) => ({
-          title: section.title,
-          content: section.lines.join("\n").trim(),
-        }))
-        .filter((chapter) => chapter.content)
+    ? sections.map((section) => ({ title: section.title, content: section.lines.join("\n").trim() })).filter((chapter) => chapter.content)
     : [{ title: fallbackTitle || "未命名章节", content: text }];
 
   return rawChapters.map((chapter, index) => ({
     id: createId("chapter"),
-    title: chapter.title || `第 ${index + 1} 章`,
+    title: chapter.title || `第${index + 1}章`,
     content: chapter.content,
     source,
     createdAt: now,
@@ -105,17 +78,13 @@ function splitIntoChapters(content: string, fallbackTitle: string, source: strin
   }));
 }
 
-function countOutlineNodes(nodes: OutlineNode[]): number {
+function countOutlineNodes(nodes: OutlineMemoryNode[]): number {
   return nodes.reduce((sum, node) => sum + 1 + countOutlineNodes(node.children ?? []), 0);
 }
 
-function OutlinePreview({ nodes, level = 0 }: { nodes: OutlineNode[]; level?: number }) {
+function OutlinePreview({ nodes, level = 0 }: { nodes: OutlineMemoryNode[]; level?: number }) {
   if (!nodes.length && level === 0) {
-    return (
-      <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-        暂无大纲树。可先在大纲页面生成或导入大纲。
-      </p>
-    );
+    return <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">暂无大纲树。可先在大纲页生成或导入大纲。</p>;
   }
 
   return (
@@ -123,9 +92,7 @@ function OutlinePreview({ nodes, level = 0 }: { nodes: OutlineNode[]; level?: nu
       {nodes.slice(0, level === 0 ? 10 : 6).map((node) => (
         <div key={node.id} className="rounded-lg border border-white/10 bg-black/10 p-3">
           <p className="truncate text-sm font-medium">{node.title}</p>
-          {node.children?.length ? (
-            <OutlinePreview nodes={node.children} level={level + 1} />
-          ) : null}
+          {node.children?.length ? <OutlinePreview nodes={node.children} level={level + 1} /> : null}
         </div>
       ))}
       {nodes.length > (level === 0 ? 10 : 6) ? (
@@ -136,26 +103,58 @@ function OutlinePreview({ nodes, level = 0 }: { nodes: OutlineNode[]; level?: nu
 }
 
 export default function NovelPage() {
+  const provider = useNovelStore((state) => state.provider);
+  const apiBaseUrl = useNovelStore((state) => state.apiBaseUrl);
+  const apiKey = useNovelStore((state) => state.apiKey);
+  const model = useNovelStore((state) => state.model);
+  const currentNovel = useNovelStore((state) => state.currentNovel);
   const chapterDraft = useNovelStore((state) => state.chapterDraft);
   const savedEntries = useNovelStore((state) => state.savedEntries);
   const settings = useNovelStore((state) => state.encyclopediaEntries);
   const addToast = useNovelStore((state) => state.addToast);
-  const [chapters, setChapters] = usePersistedState<NovelChapter[]>("inkmuse:novel:chapters", []);
+  const addTokenUsage = useNovelStore((state) => state.addTokenUsage);
+  const incrementAiCallCount = useNovelStore((state) => state.incrementAiCallCount);
+  const [chapters, setChapters] = usePersistedState<ProjectChapterMemory[]>("inkmuse:novel:chapters", []);
   const [selectedId, setSelectedId] = usePersistedState("inkmuse:novel:selectedId", "");
   const [manualTitle, setManualTitle] = usePersistedState("inkmuse:novel:manualTitle", "");
   const [manualContent, setManualContent] = usePersistedState("inkmuse:novel:manualContent", "");
-  const [outlineNodes] = usePersistedState<OutlineNode[]>("inkmuse:outline:nodes", outlineInitialValue);
+  const [outlineNodes] = usePersistedState<OutlineMemoryNode[]>("inkmuse:outline:nodes", []);
+  const [analysis, setAnalysis] = usePersistedState("inkmuse:novel:analysis", "");
+  const [queueState, setQueueState] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const selectedChapter = chapters.find((chapter) => chapter.id === selectedId) ?? chapters[0];
   const totalWords = chapters.reduce((sum, chapter) => sum + chapter.wordCount, 0);
   const averageWords = chapters.length ? Math.round(totalWords / chapters.length) : 0;
   const outlineCount = countOutlineNodes(outlineNodes);
-  const settingGroups = useMemo(() => {
-    return settings.reduce<Record<string, number>>((groups, item) => {
-      groups[item.category] = (groups[item.category] ?? 0) + 1;
-      return groups;
-    }, {});
-  }, [settings]);
+  const settingGroups = useMemo(
+    () =>
+      settings.reduce<Record<string, number>>((groups, item) => {
+        groups[item.category] = (groups[item.category] ?? 0) + 1;
+        return groups;
+      }, {}),
+    [settings],
+  );
+
+  const snapshot: ProjectMemorySnapshot = {
+    id: "default-memory",
+    novelId: currentNovel?.id ?? "novel-1",
+    title: currentNovel?.title ?? "未命名项目",
+    genre: currentNovel?.genre ?? "",
+    synopsis: currentNovel?.synopsis ?? "",
+    chapterDraft,
+    chapters,
+    outlineNodes,
+    savedEntries,
+    encyclopediaEntries: settings,
+    updatedAt: new Date().toISOString(),
+  };
+
+  function syncProjectMemory() {
+    saveProjectMemory(snapshot);
+    addToast({ title: "项目长期记忆已同步", type: "success" });
+  }
 
   function addImportedChapters(content: string, title: string, source: string) {
     const nextChapters = splitIntoChapters(content, title, source);
@@ -172,15 +171,45 @@ export default function NovelPage() {
 
   function removeChapter(id: string) {
     setChapters((value) => value.filter((chapter) => chapter.id !== id));
-    if (selectedId === id) {
-      setSelectedId("");
+    if (selectedId === id) setSelectedId("");
+  }
+
+  async function analyzeWholeNovel() {
+    setAnalysis("");
+    setAnalysisError(null);
+    setIsAnalyzing(true);
+    incrementAiCallCount();
+    syncProjectMemory();
+
+    try {
+      let output = "";
+      await streamLlm({
+        provider,
+        apiBaseUrl,
+        apiKey,
+        model,
+        temperature: 0.4,
+        maxTokens: 3200,
+        system: "你是长篇小说编辑与结构分析顾问，需要结合整本小说记忆做诊断，而不是只看单次输入。",
+        user: buildProjectAnalysisPrompt(snapshot),
+        onQueueState: setQueueState,
+        onToken: (token) => {
+          output += token;
+          addTokenUsage(Math.ceil(token.length / 2));
+          setAnalysis(output);
+        },
+      });
+    } catch (error) {
+      setAnalysisError(error instanceof Error ? error.message : "全书分析失败");
+    } finally {
+      setIsAnalyzing(false);
     }
   }
 
   return (
     <AppShell
-      title="小说查看"
-      description="导入生成章节或本地正文，统一查看整本小说的章节划分、字数结构、大纲树和设定沉淀。"
+      title="小说总览"
+      description="把章节、大纲、设定和收藏汇总为全书记忆，并基于整本小说上下文做分析。"
     >
       <div className="mt-5 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
         <div className="space-y-5">
@@ -190,34 +219,28 @@ export default function NovelPage() {
               <h2 className="text-sm font-semibold">导入章节</h2>
             </div>
             <div className="mt-4 space-y-3">
-              <Input
-                value={manualTitle}
-                onChange={(event) => setManualTitle(event.target.value)}
-                placeholder="章节标题或书名"
-                className="border-white/10 bg-black/10"
-              />
+              <Input value={manualTitle} onChange={(event) => setManualTitle(event.target.value)} placeholder="章节标题或书名" className="border-white/10 bg-black/10" />
               <Textarea
                 value={manualContent}
                 onChange={(event) => setManualContent(event.target.value)}
                 placeholder="粘贴正文，支持按“第1章 / 第一章 / Chapter 1”自动拆分"
                 className="min-h-32 border-white/10 bg-black/10"
               />
-              <Button
-                className="w-full"
-                onClick={() => addImportedChapters(manualContent, manualTitle || "手动导入", "手动导入")}
-                disabled={!manualContent.trim()}
-              >
+              <Button className="w-full" onClick={() => addImportedChapters(manualContent, manualTitle || "手动导入", "手动导入")} disabled={!manualContent.trim()}>
                 <Plus className="h-4 w-4" />
                 导入为章节
               </Button>
-              <Button
-                className="w-full"
-                variant="secondary"
-                onClick={() => addImportedChapters(chapterDraft, "当前草稿", "章节编辑器")}
-                disabled={!plainText(chapterDraft)}
-              >
+              <Button className="w-full" variant="secondary" onClick={() => addImportedChapters(chapterDraft, "当前草稿", "章节编辑器")} disabled={!plainText(chapterDraft)}>
                 <FileText className="h-4 w-4" />
                 导入当前编辑器草稿
+              </Button>
+              <Button className="w-full" variant="secondary" onClick={syncProjectMemory}>
+                <BrainCircuit className="h-4 w-4" />
+                同步长期记忆
+              </Button>
+              <Button className="w-full" onClick={analyzeWholeNovel} disabled={isAnalyzing}>
+                {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <BrainCircuit className="h-4 w-4" />}
+                全书分析
               </Button>
             </div>
           </section>
@@ -234,7 +257,7 @@ export default function NovelPage() {
             {[
               { label: "章节数", value: chapters.length.toLocaleString(), icon: BookOpen },
               { label: "总字数", value: totalWords.toLocaleString(), icon: FileText },
-              { label: "均章字数", value: averageWords.toLocaleString(), icon: FileText },
+              { label: "平均章字数", value: averageWords.toLocaleString(), icon: FileText },
               { label: "设定条目", value: settings.length.toLocaleString(), icon: Settings2 },
             ].map((item) => {
               const Icon = item.icon;
@@ -254,7 +277,7 @@ export default function NovelPage() {
             <div className="glass-panel rounded-lg border p-4">
               <div className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-primary" />
-                <h2 className="text-sm font-semibold">章节划分</h2>
+                <h2 className="text-sm font-semibold">章节列表</h2>
                 <Badge variant="secondary" className="ml-auto rounded-full">
                   {chapters.length}
                 </Badge>
@@ -262,9 +285,7 @@ export default function NovelPage() {
               <ScrollArea className="mt-4 h-[520px]">
                 <div className="space-y-2 pr-3">
                   {chapters.length === 0 ? (
-                    <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                      暂无章节。请从左侧导入正文或收藏。
-                    </p>
+                    <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">暂无章节。请从左侧导入正文或收藏。</p>
                   ) : null}
                   {chapters.map((chapter, index) => (
                     <button
@@ -273,9 +294,7 @@ export default function NovelPage() {
                       onClick={() => setSelectedId(chapter.id)}
                       className={[
                         "w-full rounded-lg border p-3 text-left transition hover:border-primary/35 hover:bg-primary/8",
-                        selectedChapter?.id === chapter.id
-                          ? "border-primary/45 bg-primary/10"
-                          : "border-white/10 bg-black/10",
+                        selectedChapter?.id === chapter.id ? "border-primary/45 bg-primary/10" : "border-white/10 bg-black/10",
                       ].join(" ")}
                     >
                       <div className="flex items-start gap-2">
@@ -312,9 +331,7 @@ export default function NovelPage() {
                 {selectedChapter ? (
                   <>
                     <Badge variant="secondary">{selectedChapter.source}</Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {selectedChapter.wordCount.toLocaleString()} 字
-                    </span>
+                    <span className="text-xs text-muted-foreground">{selectedChapter.wordCount.toLocaleString()} 字</span>
                   </>
                 ) : null}
               </div>
@@ -361,9 +378,7 @@ export default function NovelPage() {
                     </Badge>
                   ))
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    暂无设定条目。可在设定集页面提取或保存。
-                  </p>
+                  <p className="text-sm text-muted-foreground">暂无设定条目。可在设定集页面提取或保存。</p>
                 )}
               </div>
               <div className="mt-4">
@@ -382,6 +397,14 @@ export default function NovelPage() {
               </div>
             </div>
           </section>
+
+          <StreamResultPanel
+            title="全书分析"
+            content={analysis}
+            isLoading={isAnalyzing}
+            error={analysisError}
+            queueState={queueState}
+          />
         </div>
       </div>
     </AppShell>

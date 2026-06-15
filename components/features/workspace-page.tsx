@@ -121,6 +121,8 @@ function buildWritingCalendarData(
 }
 
 export function WorkspacePage() {
+  const provider = useNovelStore((state) => state.provider);
+  const apiBaseUrl = useNovelStore((state) => state.apiBaseUrl);
   const apiKey = useNovelStore((state) => state.apiKey);
   const model = useNovelStore((state) => state.model);
   const currentNovel = useNovelStore((state) => state.currentNovel);
@@ -201,6 +203,8 @@ export function WorkspacePage() {
     try {
       let next = "";
       await streamDeepSeek({
+        provider,
+        apiBaseUrl,
         apiKey,
         model,
         temperature: 1.2,

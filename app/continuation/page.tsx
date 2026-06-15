@@ -22,7 +22,10 @@ function plainText(html: string) {
 }
 
 export default function ContinuationPage() {
+  const provider = useNovelStore((state) => state.provider);
+  const apiBaseUrl = useNovelStore((state) => state.apiBaseUrl);
   const apiKey = useNovelStore((state) => state.apiKey);
+  const model = useNovelStore((state) => state.model);
   const chapterDraft = useNovelStore((state) => state.chapterDraft);
   const appendToDraft = useNovelStore((state) => state.appendToDraft);
   const saveEntry = useNovelStore((state) => state.saveEntry);
@@ -33,7 +36,7 @@ export default function ContinuationPage() {
   const [customLength, setCustomLength] = usePersistedState("inkmuse:continuation:customLength", "");
   const [temperature, setTemperature] = usePersistedState("inkmuse:continuation:temperature", 0.85);
   const [styleRef, setStyleRef] = usePersistedState("inkmuse:continuation:styleRef", "");
-  const [banWords, setBanWords] = usePersistedState("inkmuse:continuation:banWords", "命运的齿轮, 他不知道的是");
+  const [banWords, setBanWords] = usePersistedState("inkmuse:continuation:banWords", "命运的齿轮  他不知道的事");
   const [focusMode, setFocusMode] = useState(false);
   const [output, setOutput] = usePersistedState("inkmuse:continuation:output", "");
   const [error, setError] = useState<string | null>(null);
@@ -50,18 +53,15 @@ export default function ContinuationPage() {
     try {
       let next = "";
       await streamDeepSeek({
+        provider,
+        apiBaseUrl,
         apiKey,
+        model,
+        useProjectMemory: true,
         temperature,
         system:
           "你是小说续写助手。请保持既有文风、人称、剧情逻辑与角色说话方式，推进情节但不偷换设定。支持续写、润色、改写、扩写、缩写和情感注入。",
-        user: `模式：${mode[0]}
-目标长度：${effectiveLength}，请严格控制在目标字数上下 10% 以内。
-创意度：${temperature}
-禁止出现：${banWords}
-风格参考：${styleRef || "无"}
-
-前文：
-${plainText(chapterDraft).slice(-3000)}`,
+        user: `模式：${mode[0]}\n目标长度：${effectiveLength}，请严格控制在目标字数上下 10% 以内。创造度：${temperature}\n禁止出现：${banWords}\n风格参考：${styleRef || "无"}\n\n前文：${plainText(chapterDraft).slice(-3000)}`,
         onToken: (token) => {
           next += token;
           setOutput(next);
@@ -114,7 +114,7 @@ ${plainText(chapterDraft).slice(-3000)}`,
                 <Input
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  placeholder="例如：1500"
+                  placeholder="例如：500"
                   value={customLength}
                   onChange={(event) => setCustomLength(event.target.value.replace(/[^\d]/g, ""))}
                   className="border-white/10 bg-black/10"
@@ -122,7 +122,7 @@ ${plainText(chapterDraft).slice(-3000)}`,
               </div>
             </div>
             <div>
-              <p className="mb-2 text-sm font-medium">创意度 {temperature.toFixed(1)}</p>
+              <p className="mb-2 text-sm font-medium">创造度 {temperature.toFixed(1)}</p>
               <Input
                 type="range"
                 min={0.1}
@@ -156,7 +156,7 @@ ${plainText(chapterDraft).slice(-3000)}`,
               onImport={(entry) => {
                 setStyleRef(entry.content);
                 setOutput(entry.content);
-                addToast({ title: "已导入收藏，可继续改写", type: "success" });
+                addToast({ title: "已导入收藏，可继续修改", type: "success" });
               }}
             />
           </div>

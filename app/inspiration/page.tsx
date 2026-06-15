@@ -39,6 +39,8 @@ const borderThemes = [
 ];
 
 export default function InspirationPage() {
+  const provider = useNovelStore((state) => state.provider);
+  const apiBaseUrl = useNovelStore((state) => state.apiBaseUrl);
   const apiKey = useNovelStore((state) => state.apiKey);
   const model = useNovelStore((state) => state.model);
   const saveEntry = useNovelStore((state) => state.saveEntry);
@@ -83,6 +85,8 @@ export default function InspirationPage() {
     try {
       let output = "";
       await streamDeepSeek({
+        provider,
+        apiBaseUrl,
         apiKey,
         model,
         system,
@@ -118,6 +122,8 @@ export default function InspirationPage() {
     try {
       let output = "";
       await streamDeepSeek({
+        provider,
+        apiBaseUrl,
         apiKey,
         model,
         system: "你是资深网文编辑，请把给定灵感扩展为可执行的长篇小说方案。",

@@ -2,18 +2,28 @@
 
 import { create } from "zustand";
 import { defaultNovel } from "@/lib/mock-data";
+import { getDefaultBaseUrl, getDefaultModel, normalizeModel, normalizeProvider } from "@/lib/llm";
 import type {
-  DeepSeekModel,
   EncyclopediaEntry,
+  LlmModel,
+  LlmProvider,
   Novel,
   SavedEntry,
   ToastMessage,
 } from "@/types";
 
+type DailyWritingStat = {
+  date: string;
+  words: number;
+  minutes: number;
+};
+
 type NovelStore = {
+  provider: LlmProvider;
+  apiBaseUrl: string;
   apiKey: string;
   apiKeyPersisted: boolean;
-  model: DeepSeekModel;
+  model: LlmModel;
   currentNovel: Novel | null;
   chapterDraft: string;
   aiCallCount: number;
@@ -30,11 +40,13 @@ type NovelStore = {
   dailyGoal: number;
   weeklyGoal: number;
   writingMinutes: number;
+  setProvider: (value: LlmProvider) => void;
+  setApiBaseUrl: (value: string) => void;
   setApiKey: (value: string, persistKey?: boolean) => void;
   setApiKeyPersisted: (value: boolean) => void;
   clearApiKey: () => void;
   hydrateFromStorage: () => void;
-  setModel: (value: DeepSeekModel) => void;
+  setModel: (value: LlmModel) => void;
   setCurrentNovel: (novel: Novel) => void;
   setChapterDraft: (value: string) => void;
   appendToDraft: (value: string) => void;
@@ -55,19 +67,16 @@ type NovelStore = {
   setGoals: (dailyGoal: number, weeklyGoal: number) => void;
 };
 
-type DailyWritingStat = {
-  date: string;
-  words: number;
-  minutes: number;
-};
-
 const API_KEY_STORAGE = "novelmuse-api-key";
 const API_KEY_PERSISTENCE_STORAGE = "novelmuse-api-key-persistence";
 const STATE_STORAGE = "novelmuse-state";
 const API_KEY_MASK = "novelmuse-local-key";
+const initialDraft = "";
 
 type PersistedState = Pick<
   NovelStore,
+  | "provider"
+  | "apiBaseUrl"
   | "chapterDraft"
   | "aiCallCount"
   | "tokenUsage"
@@ -83,19 +92,14 @@ type PersistedState = Pick<
   | "writingMinutes"
 >;
 
-const initialDraft = "";
-const defaultModel: DeepSeekModel = "deepseek-v4-flash";
-
-function normalizeModel(value?: DeepSeekModel | "deepseek-chat") {
-  return value === "deepseek-v4-pro" ? value : defaultModel;
-}
-
 const defaultPersistedState: PersistedState = {
+  provider: "deepseek",
+  apiBaseUrl: getDefaultBaseUrl("deepseek"),
   chapterDraft: initialDraft,
   aiCallCount: 0,
   tokenUsage: 0,
   apiBalance: "未知",
-  model: defaultModel,
+  model: getDefaultModel("deepseek"),
   sidebarCollapsed: false,
   welcomeDismissed: true,
   savedEntries: [],
@@ -126,10 +130,7 @@ function loadStoredApiKey() {
     return decoded
       .split("")
       .map((char, index) =>
-        String.fromCharCode(
-          char.charCodeAt(0) ^
-            API_KEY_MASK.charCodeAt(index % API_KEY_MASK.length),
-        ),
+        String.fromCharCode(char.charCodeAt(0) ^ API_KEY_MASK.charCodeAt(index % API_KEY_MASK.length)),
       )
       .join("");
   } catch {
@@ -145,10 +146,7 @@ function encryptApiKey(value: string) {
   const masked = value
     .split("")
     .map((char, index) =>
-      String.fromCharCode(
-        char.charCodeAt(0) ^
-          API_KEY_MASK.charCodeAt(index % API_KEY_MASK.length),
-      ),
+      String.fromCharCode(char.charCodeAt(0) ^ API_KEY_MASK.charCodeAt(index % API_KEY_MASK.length)),
     )
     .join("");
 
@@ -190,13 +188,16 @@ function loadPersistedState(): PersistedState {
     }
 
     const parsed = JSON.parse(raw) as Partial<PersistedState>;
+    const provider = normalizeProvider(parsed.provider);
 
     return {
+      provider,
+      apiBaseUrl: parsed.apiBaseUrl?.trim() ?? getDefaultBaseUrl(provider),
       chapterDraft: parsed.chapterDraft ?? initialDraft,
       aiCallCount: parsed.aiCallCount ?? 0,
       tokenUsage: parsed.tokenUsage ?? 0,
       apiBalance: parsed.apiBalance ?? "未知",
-      model: normalizeModel(parsed.model),
+      model: normalizeModel(provider, parsed.model),
       sidebarCollapsed: parsed.sidebarCollapsed ?? false,
       welcomeDismissed: parsed.welcomeDismissed ?? true,
       savedEntries: parsed.savedEntries ?? [],
@@ -217,6 +218,8 @@ function persist(state: NovelStore) {
   }
 
   const payload: PersistedState = {
+    provider: state.provider,
+    apiBaseUrl: state.apiBaseUrl,
     chapterDraft: state.chapterDraft,
     aiCallCount: state.aiCallCount,
     tokenUsage: state.tokenUsage,
@@ -267,6 +270,8 @@ function createId(prefix: string) {
 }
 
 export const useNovelStore = create<NovelStore>((set) => ({
+  provider: defaultPersistedState.provider,
+  apiBaseUrl: defaultPersistedState.apiBaseUrl,
   apiKey: "",
   apiKeyPersisted: false,
   model: defaultPersistedState.model,
@@ -286,6 +291,21 @@ export const useNovelStore = create<NovelStore>((set) => ({
   dailyGoal: defaultPersistedState.dailyGoal,
   weeklyGoal: defaultPersistedState.weeklyGoal,
   writingMinutes: defaultPersistedState.writingMinutes,
+  setProvider: (value) =>
+    set((state) => {
+      const model = normalizeModel(value, state.model);
+      const apiBaseUrl =
+        value === "openai-compatible" ? state.apiBaseUrl || getDefaultBaseUrl(value) : getDefaultBaseUrl(value);
+      const next = { ...state, provider: value, model, apiBaseUrl, apiBalance: "未知" };
+      persist(next);
+      return { provider: value, model, apiBaseUrl, apiBalance: "未知" };
+    }),
+  setApiBaseUrl: (value) =>
+    set((state) => {
+      const next = { ...state, apiBaseUrl: value };
+      persist(next);
+      return { apiBaseUrl: value };
+    }),
   setApiKey: (value, persistKey = false) => {
     persistApiKey(value, persistKey);
     set({ apiKey: value, apiKeyPersisted: persistKey && Boolean(value.trim()) });
@@ -304,6 +324,8 @@ export const useNovelStore = create<NovelStore>((set) => ({
     const persisted = loadPersistedState();
     const apiKeyPersisted = loadApiKeyPersistence();
     set({
+      provider: persisted.provider,
+      apiBaseUrl: persisted.apiBaseUrl,
       apiKey: apiKeyPersisted ? loadStoredApiKey() : "",
       apiKeyPersisted,
       model: persisted.model,
@@ -379,10 +401,7 @@ export const useNovelStore = create<NovelStore>((set) => ({
     }),
   addToast: (toast) =>
     set((state) => ({
-      toasts: [
-        ...state.toasts,
-        { ...toast, id: createId("toast") },
-      ].slice(-5),
+      toasts: [...state.toasts, { ...toast, id: createId("toast") }].slice(-5),
     })),
   removeToast: (id) =>
     set((state) => ({
@@ -395,10 +414,7 @@ export const useNovelStore = create<NovelStore>((set) => ({
         id: createId("saved"),
         createdAt: new Date().toISOString(),
       };
-      const next = {
-        ...state,
-        savedEntries: [nextEntry, ...state.savedEntries],
-      };
+      const next = { ...state, savedEntries: [nextEntry, ...state.savedEntries] };
       persist(next);
       return { savedEntries: next.savedEntries };
     }),
@@ -407,14 +423,7 @@ export const useNovelStore = create<NovelStore>((set) => ({
       const next = {
         ...state,
         savedEntries: state.savedEntries.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                title: entry.title,
-                content: entry.content,
-                tags: entry.tags,
-              }
-            : item,
+          item.id === id ? { ...item, title: entry.title, content: entry.content, tags: entry.tags } : item,
         ),
       };
       persist(next);
@@ -447,9 +456,7 @@ export const useNovelStore = create<NovelStore>((set) => ({
     set((state) => {
       const next = {
         ...state,
-        encyclopediaEntries: state.encyclopediaEntries.filter(
-          (entry) => entry.id !== id,
-        ),
+        encyclopediaEntries: state.encyclopediaEntries.filter((entry) => entry.id !== id),
       };
       persist(next);
       return { encyclopediaEntries: next.encyclopediaEntries };

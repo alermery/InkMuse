@@ -12,11 +12,14 @@ import { savedEntryFromText, streamDeepSeek } from "@/lib/ai-stream";
 import { useNovelStore } from "@/lib/store";
 import { usePersistedState } from "@/lib/use-persisted-state";
 
-const emotions = ["紧张", "温馨", "搞笑", "对峙"];
+const emotions = ["紧张", "温柔", "搞笑", "对峙"];
 const purposes = ["推动剧情", "展示性格", "制造冲突", "表白"];
 
 export default function DialoguePage() {
+  const provider = useNovelStore((state) => state.provider);
+  const apiBaseUrl = useNovelStore((state) => state.apiBaseUrl);
   const apiKey = useNovelStore((state) => state.apiKey);
+  const model = useNovelStore((state) => state.model);
   const saveEntry = useNovelStore((state) => state.saveEntry);
   const appendToDraft = useNovelStore((state) => state.appendToDraft);
   const addToast = useNovelStore((state) => state.addToast);
@@ -38,8 +41,12 @@ export default function DialoguePage() {
     try {
       let next = "";
       await streamDeepSeek({
+        provider,
+        apiBaseUrl,
         apiKey,
-        system: "你是对白润色专家。请生成符合角色性格的剧本格式对白，包含动作描写和表情描写，用括号标注，但不要堆砌说明。",
+        model,
+        useProjectMemory: true,
+        system: "你是对白创作专家。请生成符合角色性格的剧本式对白，包含动作描写和表情标注，用括号标注但不要堆砌说明。",
         user: `参与角色：${characters.join("、")}\n场景：${scene}\n情绪：${emotion[0]}\n目的：${purpose[0]}\n请输出剧本格式对白。`,
         temperature: 0.9,
         onToken: (token) => {
@@ -57,7 +64,7 @@ export default function DialoguePage() {
   return (
     <ModuleFormShell
       title="对话生成"
-      description="选择角色、场景、情绪和对话目的，生成带动作与表情标注的剧本格式对白。"
+      description="选择角色、场景、情绪和对话目的，生成带动作与表情标注的剧本式对白。"
       left={
         <section className="glass-panel rounded-lg border p-4">
           <div className="space-y-5">
@@ -89,7 +96,7 @@ export default function DialoguePage() {
               onImport={(entry) => {
                 setScene(entry.content);
                 setOutput(entry.content);
-                addToast({ title: "已导入对话收藏，可继续调整", type: "success" });
+                addToast({ title: "已导入对白收藏，可继续调整", type: "success" });
               }}
             />
           </div>

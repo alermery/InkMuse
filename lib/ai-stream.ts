@@ -1,17 +1,20 @@
 "use client";
 
-import type { EncyclopediaEntry, SavedEntry } from "@/types";
-import type { DeepSeekModel } from "@/types";
+import type { EncyclopediaEntry, LlmModel, LlmProvider, SavedEntry } from "@/types";
+import { enrichUserPromptWithProjectMemory, loadProjectMemory } from "@/lib/project-memory";
 
 type StreamRequest = {
   system: string;
   user: string;
+  provider?: LlmProvider;
+  apiBaseUrl?: string;
   apiKey?: string;
-  model?: DeepSeekModel;
+  model?: LlmModel;
   temperature?: number;
   maxTokens?: number;
   timeoutMs?: number;
   retries?: number;
+  useProjectMemory?: boolean;
   onToken: (token: string) => void;
   onQueueState?: (state: "排队中" | "生成中" | "重试中" | "完成") => void;
 };
@@ -34,35 +37,42 @@ async function waitForDebounce() {
 async function runStream({
   system,
   user,
+  provider,
+  apiBaseUrl,
   apiKey,
   model,
   temperature,
   maxTokens,
   timeoutMs,
+  useProjectMemory,
   onToken,
   onQueueState,
 }: Omit<StreamRequest, "retries">) {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs ?? 60_000);
+  const projectMemory = useProjectMemory ? loadProjectMemory() : null;
+  const finalUser = enrichUserPromptWithProjectMemory(user, projectMemory);
 
   try {
     onQueueState?.("生成中");
-    const response = await fetch("/api/deepseek", {
+    const response = await fetch("/api/llm", {
       method: "POST",
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
         Accept: "text/event-stream",
-        ...(apiKey ? { "x-deepseek-api-key": apiKey } : {}),
+        ...(apiKey ? { "x-llm-api-key": apiKey } : {}),
       },
       body: JSON.stringify({
+        provider,
+        apiBaseUrl,
         model,
         temperature,
         maxTokens,
         stream: true,
         messages: [
           { role: "system", content: system },
-          { role: "user", content: user },
+          { role: "user", content: finalUser },
         ],
       }),
     });
@@ -87,13 +97,8 @@ async function runStream({
       buffer = events.pop() ?? "";
 
       for (const event of events) {
-        const line = event
-          .split("\n")
-          .find((item) => item.startsWith("data:"));
-
-        if (!line) {
-          continue;
-        }
+        const line = event.split("\n").find((item) => item.startsWith("data:"));
+        if (!line) continue;
 
         const data = line.slice(5).trim();
         if (data === "[DONE]") {
@@ -105,12 +110,8 @@ async function runStream({
         }
 
         const parsed = JSON.parse(data) as { content?: string; error?: string };
-        if (parsed.error) {
-          errorMessage += parsed.error;
-        }
-        if (parsed.content) {
-          onToken(parsed.content);
-        }
+        if (parsed.error) errorMessage += parsed.error;
+        if (parsed.content) onToken(parsed.content);
       }
     }
 
@@ -122,7 +123,7 @@ async function runStream({
   }
 }
 
-export async function streamDeepSeek(request: StreamRequest) {
+export async function streamLlm(request: StreamRequest) {
   const retries = request.retries ?? 2;
   await waitForDebounce();
   request.onQueueState?.("排队中");
@@ -132,20 +133,17 @@ export async function streamDeepSeek(request: StreamRequest) {
       await runStream(request);
       return;
     } catch (error) {
-      if (attempt >= retries) {
-        throw error;
-      }
+      if (attempt >= retries) throw error;
       request.onQueueState?.("重试中");
       await sleep(600 * 2 ** attempt);
     }
   }
 }
 
+export const streamDeepSeek = streamLlm;
+
 export function stripMarkdown(value: string) {
-  return value
-    .replace(/```json|```/g, "")
-    .replace(/^#+\s*/gm, "")
-    .trim();
+  return value.replace(/```json|```/g, "").replace(/^#+\s*/gm, "").trim();
 }
 
 export function parseJsonArray<T>(value: string): T[] {
@@ -179,11 +177,5 @@ export function settingEntryFromText(
   content: string,
   tags: string[],
 ): Omit<EncyclopediaEntry, "id" | "createdAt"> {
-  return {
-    category,
-    title,
-    content,
-    tags,
-    relatedChapterIds: [],
-  };
+  return { category, title, content, tags, relatedChapterIds: [] };
 }

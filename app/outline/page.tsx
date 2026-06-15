@@ -248,6 +248,8 @@ function OutlineBranch({
 }
 
 export default function OutlinePage() {
+  const provider = useNovelStore((state) => state.provider);
+  const apiBaseUrl = useNovelStore((state) => state.apiBaseUrl);
   const apiKey = useNovelStore((state) => state.apiKey);
   const model = useNovelStore((state) => state.model);
   const saveEntry = useNovelStore((state) => state.saveEntry);
@@ -283,6 +285,8 @@ export default function OutlinePage() {
     try {
       let next = "";
       await streamDeepSeek({
+        provider,
+        apiBaseUrl,
         apiKey,
         model,
         temperature: 0.8,
@@ -312,6 +316,8 @@ export default function OutlinePage() {
     try {
       let next = "";
       await streamDeepSeek({
+        provider,
+        apiBaseUrl,
         apiKey,
         model,
         temperature: 0.8,
@@ -341,6 +347,8 @@ export default function OutlinePage() {
     try {
       let next = "";
       await streamDeepSeek({
+        provider,
+        apiBaseUrl,
         apiKey,
         model,
         temperature: 0.9,

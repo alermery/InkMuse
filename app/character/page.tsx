@@ -17,7 +17,10 @@ const roles = ["主角", "配角", "反派", "路人"];
 const traitSeeds = ["克制", "偏执", "温柔", "毒舌", "高傲", "敏锐", "迟钝", "危险", "理想主义"];
 
 export default function CharacterPage() {
+  const provider = useNovelStore((state) => state.provider);
+  const apiBaseUrl = useNovelStore((state) => state.apiBaseUrl);
   const apiKey = useNovelStore((state) => state.apiKey);
+  const model = useNovelStore((state) => state.model);
   const saveEntry = useNovelStore((state) => state.saveEntry);
   const saveSetting = useNovelStore((state) => state.saveSetting);
   const addToast = useNovelStore((state) => state.addToast);
@@ -44,7 +47,11 @@ export default function CharacterPage() {
     try {
       let output = "";
       await streamDeepSeek({
+        provider,
+        apiBaseUrl,
         apiKey,
+        model,
+        useProjectMemory: true,
         system: "你是角色设计顾问。请创建丰满立体的角色档案，包含基础信息、性格标签、小传、核心动机、内心恐惧、说话风格示例和关系图谱建议。",
         user: `姓名：${name}\n年龄：${age}\n性别：${gender}\n身份：${identity}\n角色定位：${role[0]}\n性格标签：${traits.join("、")}`,
         onToken: (token) => {
@@ -68,8 +75,12 @@ export default function CharacterPage() {
     try {
       let output = "";
       await streamDeepSeek({
+        provider,
+        apiBaseUrl,
         apiKey,
-        system: `你正在扮演小说角色「${name}」。必须保持角色身份、性格和说话风格，用第一人称回答，不要跳出角色。`,
+        model,
+        useProjectMemory: true,
+        system: `你正在扮演小说角色“${name}”。必须保持角色身份、性格和说话风格，用第一人称回答，不要跳出角色。`,
         user: `角色档案：${profile || `${identity}，${role[0]}，性格：${traits.join("、")}`}\n问题：${question}`,
         temperature: 0.95,
         onToken: (token) => {
@@ -109,15 +120,7 @@ export default function CharacterPage() {
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
               生成角色档案
             </Button>
-            <Button
-              className="w-full"
-              variant="secondary"
-              onClick={() =>
-                setTraits((value) =>
-                  Array.from(new Set([...value, "矛盾感", "秘密", "强目标"])),
-                )
-              }
-            >
+            <Button className="w-full" variant="secondary" onClick={() => setTraits((value) => Array.from(new Set([...value, "矛盾感", "秘密", "强目标"])))}>
               AI 性格标签
             </Button>
             <SavedImportPanel
